@@ -1,0 +1,25 @@
+{
+  "name": "Aprovacao",
+  "type": "object",
+  "properties": {
+    "viagem_id": {
+      "type": "string",
+      "description": "ID da viagem vinculada"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "gestor",
+        "financeiro"
+      ],
+      "description": "Tipo de aprova\u00e7\u00e3o"
+    },
+    "aprovador_id": {
+      "type": "string",
+      "description": "ID do aprovador"
+    },
+    "aprovador_nome": {
+      "type": "string",
+      "description": "Nome do aprovador"
+    },
+    "status": {

@@ -1,0 +1,53 @@
+{
+  "name": "Fechamento",
+  "type": "object",
+  "properties": {
+    "viagem_id": {
+      "type": "string",
+      "description": "ID da viagem vinculada"
+    },
+    "subtotal_taxas": {
+      "type": "number",
+      "default": 0,
+      "description": "Subtotal de taxas antecipadas"
+    },
+    "subtotal_despesas": {
+      "type": "number",
+      "default": 0,
+      "description": "Subtotal de despesas esp\u00e9cie"
+    },
+    "total_geral": {
+      "type": "number",
+      "default": 0,
+      "description": "Total geral da viagem"
+    },
+    "vi_adiantamento": {
+      "type": "number",
+      "default": 0,
+      "description": "VI adiantamento recebido"
+    },
+    "dif_receber_devolver": {
+      "type": "number",
+      "default": 0,
+      "description": "Diferen\u00e7a a receber/devolver (+ devolve, - recebe)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "calculado",
+        "aprovado_gestor",
+        "aprovado_financeiro",
+        "rejeitado"
+      ],
+      "default": "pendente"
+    },
+    "pdf_url": {
+      "type": "string",
+      "description": "URL do PDF da presta\u00e7\u00e3o de contas"
+    }
+  },
+  "required": [
+    "viagem_id"
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "name": "DespesaDiaria",
+  "type": "object",
+  "properties": {
+    "viagem_id": {
+      "type": "string",
+      "description": "ID da viagem vinculada"
+    },
+    "data": {
+      "type": "string",
+      "format": "date",
+      "description": "Data da despesa"
+    },
+    "qtd_colaboradores": {
+      "type": "integer",
+      "default": 1
+    },
+    "alimentacao": {
+      "type": "number",
+      "default": 0
+    },
+    "combustivel": {
+      "type": "number",
+      "default": 0
+    },
+    "estacionamento": {
+      "type": "number",
+      "default": 0
+    },
+    "taxi_uber_km": {
+      "type": "number",
+      "default": 0
+    },
+    "outros": {
+      "type": "number",
+      "default": 0
+    },
+    "observacao": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "viagem_id",
+    "data"
+  ]
+}

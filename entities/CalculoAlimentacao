@@ -1,0 +1,46 @@
+{
+  "name": "CalculoAlimentacao",
+  "type": "object",
+  "properties": {
+    "viagem_id": {
+      "type": "string",
+      "description": "ID da viagem vinculada"
+    },
+    "vi_alimentacao": {
+      "type": "number",
+      "default": 360,
+      "description": "VI alimenta\u00e7\u00e3o - valor limite por di\u00e1ria"
+    },
+    "tt_alimentacao": {
+      "type": "number",
+      "default": 0,
+      "description": "TT alimenta\u00e7\u00e3o - total gasto em alimenta\u00e7\u00e3o"
+    },
+    "dias_viagem": {
+      "type": "integer",
+      "description": "N\u00famero de dias da viagem"
+    },
+    "vi_total": {
+      "type": "number",
+      "description": "VI total = VI alimenta\u00e7\u00e3o \u00d7 dias"
+    },
+    "dif_alimentacao": {
+      "type": "number",
+      "default": 0,
+      "description": "Diferen\u00e7a = VI total - TT (negativo = desconto)"
+    },
+    "desconto_aplicado": {
+      "type": "boolean",
+      "default": false,
+      "description": "Se o desconto foi aplicado (dif negativa)"
+    },
+    "valor_descontado": {
+      "type": "number",
+      "default": 0,
+      "description": "Valor efetivamente descontado"
+    }
+  },
+  "required": [
+    "viagem_id"
+  ]
+}

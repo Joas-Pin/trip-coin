@@ -1,0 +1,33 @@
+{
+  "name": "Cliente",
+  "type": "object",
+  "properties": {
+    "nome": {
+      "type": "string",
+      "description": "Nome do cliente"
+    },
+    "cnpj": {
+      "type": "string",
+      "description": "CNPJ do cliente"
+    },
+    "endereco": {
+      "type": "string",
+      "description": "Endere\u00e7o do cliente"
+    },
+    "cidade": {
+      "type": "string",
+      "description": "Cidade do cliente"
+    },
+    "uf": {
+      "type": "string",
+      "description": "UF do cliente"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "nome"
+  ]
+}

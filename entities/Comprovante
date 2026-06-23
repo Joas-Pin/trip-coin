@@ -1,0 +1,77 @@
+{
+  "name": "Comprovante",
+  "type": "object",
+  "properties": {
+    "viagem_id": {
+      "type": "string",
+      "description": "ID da viagem vinculada"
+    },
+    "despesa_diaria_id": {
+      "type": "string",
+      "description": "ID da despesa di\u00e1ria vinculada (opcional)"
+    },
+    "taxa_antecipada_id": {
+      "type": "string",
+      "description": "ID da taxa antecipada vinculada (opcional)"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "Alimenta\u00e7\u00e3o",
+        "Combust\u00edvel",
+        "Estacionamento",
+        "Taxi/Uber/KM",
+        "Hospedagem",
+        "Passagem A\u00e9rea",
+        "Aluguel de ve\u00edculo",
+        "Outros"
+      ],
+      "description": "Categoria do comprovante"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "URL do arquivo do comprovante"
+    },
+    "nome_estabelecimento": {
+      "type": "string",
+      "description": "Nome do estabelecimento (OCR)"
+    },
+    "cnpj": {
+      "type": "string",
+      "description": "CNPJ extra\u00eddo (OCR)"
+    },
+    "data_compra": {
+      "type": "string",
+      "format": "date",
+      "description": "Data da compra (OCR)"
+    },
+    "valor_total": {
+      "type": "number",
+      "description": "Valor total (OCR)"
+    },
+    "categoria_sugerida": {
+      "type": "string",
+      "description": "Categoria sugerida pelo OCR"
+    },
+    "ocr_status": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "processando",
+        "concluido",
+        "erro"
+      ],
+      "default": "pendente",
+      "description": "Status do processamento OCR"
+    },
+    "confirmado": {
+      "type": "boolean",
+      "default": false,
+      "description": "Usu\u00e1rio confirmou os dados do OCR"
+    }
+  },
+  "required": [
+    "viagem_id",
+    "file_url"
+  ]
+}

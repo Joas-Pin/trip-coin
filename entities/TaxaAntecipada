@@ -1,0 +1,42 @@
+{
+  "name": "TaxaAntecipada",
+  "type": "object",
+  "properties": {
+    "viagem_id": {
+      "type": "string",
+      "description": "ID da viagem vinculada"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "Hospedagem",
+        "Passagem A\u00e9rea",
+        "Aluguel de ve\u00edculo",
+        "Outros"
+      ],
+      "description": "Tipo de taxa antecipada"
+    },
+    "descricao": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o adicional"
+    },
+    "valor": {
+      "type": "number",
+      "description": "Valor da taxa"
+    },
+    "comprovante_url": {
+      "type": "string",
+      "description": "URL do comprovante anexado"
+    },
+    "pago_pela_empresa": {
+      "type": "boolean",
+      "default": true,
+      "description": "Indica se foi pago antecipadamente pela empresa"
+    }
+  },
+  "required": [
+    "viagem_id",
+    "tipo",
+    "valor"
+  ]
+}

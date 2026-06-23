@@ -1,0 +1,22 @@
+{
+  "name": "ConfiguracaoFinanceira",
+  "type": "object",
+  "properties": {
+    "chave": {
+      "type": "string",
+      "description": "Chave \u00fanica da configura\u00e7\u00e3o"
+    },
+    "valor": {
+      "type": "number",
+      "description": "Valor da configura\u00e7\u00e3o"
+    },
+    "descricao": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o do par\u00e2metro"
+    }
+  },
+  "required": [
+    "chave",
+    "valor"
+  ]
+}
