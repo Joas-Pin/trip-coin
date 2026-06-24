@@ -13,6 +13,7 @@ import {
 import { useAuth } from '@/lib/AuthContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { safeFormatDate } from '@/utils';
 import { Link } from 'react-router-dom';
 import notificacoesApi from "@/api/notificacoes";
 
@@ -93,7 +94,7 @@ export default function HeaderBar({ children }) {
                         <p className="text-sm font-medium truncate">{notif.titulo}</p>
                         <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{notif.mensagem}</p>
                         <p className="text-[10px] text-muted-foreground mt-1">
-                          {format(new Date(notif.created_date), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                          {safeFormatDate(notif.created_date, "dd/MM 'às' HH:mm", ptBR)}
                         </p>
                       </div>
                     </div>

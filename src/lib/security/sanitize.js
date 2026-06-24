@@ -79,7 +79,7 @@ export function sanitizeInput(input) {
   if (typeof input !== 'string') {
     return input;
   }
-  
+
   // First, remove any potentially malicious content with DOMPurify
   let sanitized = DOMPurify.sanitize(input, {
     ALLOWED_TAGS: [], // No HTML tags allowed by default
@@ -87,12 +87,11 @@ export function sanitizeInput(input) {
     KEEP_CONTENT: true,
     FORCE_BODY: true,
   });
-  
-  // Remove control characters and trim
+
+  // Remove control characters (but preserve spaces)
   sanitized = sanitized
-    .replace(/[\x00-\x1F\x7F]/g, '')
-    .trim();
-  
+    .replace(/[\x00-\x1F\x7F]/g, '');
+
   return sanitized;
 }
 

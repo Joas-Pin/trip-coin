@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { safeFormatDate } from '@/utils';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -241,9 +242,18 @@ export default function ViagemDetail() {
     // Atualizar cálculo de alimentação
     const ttAlimentacao = despesas.reduce((s, d) => s + (d.alimentacao || 0), 0);
     const viAlimDiaria = calculoAlim?.vi_alimentacao || 360;
-    const dias = viagem?.dt_saida && viagem?.dt_retorno
-      ? Math.max(1, Math.ceil((new Date(viagem.dt_retorno + 'T00:00:00') - new Date(viagem.dt_saida + 'T00:00:00')) / (1000 * 60 * 60 * 24)) + 1)
-      : 1;
+    let dias = 1;
+    try {
+      if (viagem?.dt_saida && viagem?.dt_retorno) {
+        const dataSaida = new Date(viagem.dt_saida + 'T00:00:00');
+        const dataRetorno = new Date(viagem.dt_retorno + 'T00:00:00');
+        if (!isNaN(dataSaida.getTime()) && !isNaN(dataRetorno.getTime())) {
+          dias = Math.max(1, Math.ceil((dataRetorno - dataSaida) / (1000 * 60 * 60 * 24)) + 1);
+        }
+      }
+    } catch {
+      dias = 1;
+    }
     const viTotal = viAlimDiaria * dias;
     const difAlim = viTotal - ttAlimentacao;
     const descontoAplicado = difAlim < 0;
@@ -564,7 +574,7 @@ export default function ViagemDetail() {
                       const total = (d.alimentacao || 0) + (d.combustivel || 0) + (d.estacionamento || 0) + (d.taxi_uber_km || 0) + (d.outros || 0);
                       return (
                         <tr key={d.id} className="border-b border-border/50 hover:bg-accent/5 transition-colors">
-                          <td className="p-3 font-medium">{d.data ? format(new Date(d.data + 'T00:00:00'), 'dd/MM', { locale: ptBR }) : '—'}</td>
+                          <td className="p-3 font-medium">{safeFormatDate(d.data, 'dd/MM', ptBR)}</td>
                           <td className="p-3">R$ {(d.alimentacao || 0).toFixed(2)}</td>
                           <td className="p-3">R$ {(d.combustivel || 0).toFixed(2)}</td>
                           <td className="p-3">R$ {(d.estacionamento || 0).toFixed(2)}</td>
@@ -604,7 +614,7 @@ export default function ViagemDetail() {
                           {t.local_partida || '?'} <ArrowRight className="inline h-3 w-3 mx-1" /> {t.local_chegada || '?'}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {t.data_saida ? format(new Date(t.data_saida + 'T00:00:00'), "dd/MM", { locale: ptBR }) : '—'} às {t.hora_saida || '—'}
+                          {safeFormatDate(t.data_saida, "dd/MM", ptBR)} às {t.hora_saida || '—'}
                           {' '}• {t.meio_locomocao}
                           {t.hora_chegada ? ` • Chegada: ${t.hora_chegada}` : ''}
                         </p>
@@ -850,7 +860,7 @@ export default function ViagemDetail() {
                     {a.comentario && <p className="text-xs text-muted-foreground mt-2">{a.comentario}</p>}
                     {a.data_aprovacao && (
                       <p className="text-[10px] text-muted-foreground mt-1">
-                        {format(new Date(a.data_aprovacao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        {safeFormatDate(a.data_aprovacao, "dd/MM/yyyy 'às' HH:mm", ptBR)}
                       </p>
                     )}
                   </div>

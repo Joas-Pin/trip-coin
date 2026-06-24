@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Plane, ChevronRight, Search, Filter } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { safeFormatDate } from '@/utils';
 import viagensApi from "@/api/viagens";
 
 const statusBadge = {
@@ -134,8 +135,8 @@ export default function MinhasViagens() {
                           {viagem.cliente_nome} — {viagem.localidade}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {viagem.dt_saida ? format(new Date(viagem.dt_saida + 'T00:00:00'), "dd/MM/yy", { locale: ptBR }) : '—'} →{' '}
-                          {viagem.dt_retorno ? format(new Date(viagem.dt_retorno + 'T00:00:00'), "dd/MM/yy", { locale: ptBR }) : '—'}
+                          {safeFormatDate(viagem.dt_saida, "dd/MM/yy", ptBR)} →{' '}
+                          {safeFormatDate(viagem.dt_retorno, "dd/MM/yy", ptBR)}
                         </p>
                       </div>
                     </div>
