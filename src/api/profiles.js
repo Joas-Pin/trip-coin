@@ -51,15 +51,19 @@ export async function upsertProfile(profile) {
 
 export async function ensureProfileForUser(user, role = DEFAULT_ROLE, username = null) {
   if (!user?.id) return null;
+  console.log(`[ensureProfileForUser] Starting for user ID: ${user.id}`);
+  
   const sb = getSupabase();
   const {
     data: { session },
   } = await sb.auth.getSession();
 
   if (!session?.user?.id || session.user.id !== user.id) {
+    console.warn(`[ensureProfileForUser] Session mismatch or missing! Session user: ${session?.user?.id}, Provided user: ${user.id}`);
     return null;
   }
 
+  console.log(`[ensureProfileForUser] Checking if profile exists for user: ${user.id}`);
   const { data, error } = await sb
     .from("profiles")
     .select("*")
@@ -67,13 +71,18 @@ export async function ensureProfileForUser(user, role = DEFAULT_ROLE, username =
     .maybeSingle();
 
   if (error) {
+    console.error(`[ensureProfileForUser] Error checking profile existence:`, error);
     throw error;
   }
 
   if (data) {
+    console.log(`[ensureProfileForUser] Profile found!`, data);
     return data;
   }
 
+  console.log(`[ensureProfileForUser] No profile found, creating a new one for user: ${user.id}`);
+  console.log(`[ensureProfileForUser] User metadata:`, user.user_metadata);
+  
   const nome =
     user.user_metadata?.nome ||
     user.user_metadata?.full_name ||
@@ -86,6 +95,7 @@ export async function ensureProfileForUser(user, role = DEFAULT_ROLE, username =
     email: user.email || "",
     role,
   };
+  console.log(`[ensureProfileForUser] Profile data to insert:`, profileData);
 
   // Only add username if provided
   if (username) {
@@ -95,16 +105,23 @@ export async function ensureProfileForUser(user, role = DEFAULT_ROLE, username =
         ...profileData,
         username,
       });
+      console.log(`[ensureProfileForUser] Profile created successfully (with username)!`, createdWithUsername);
       return createdWithUsername;
     } catch (error) {
       // If that fails, create without username
-      console.warn("Username column not found, creating profile without it");
+      console.warn(`[ensureProfileForUser] Username column not found or error, creating profile without it:`, error);
     }
   }
 
   // Create without username
-  const created = await upsertProfile(profileData);
-  return created;
+  try {
+    const created = await upsertProfile(profileData);
+    console.log(`[ensureProfileForUser] Profile created successfully (without username)!`, created);
+    return created;
+  } catch (createError) {
+    console.error(`[ensureProfileForUser] FATAL ERROR creating profile:`, createError);
+    throw createError;
+  }
 }
 
 export async function listProfilesByRole(role) {
