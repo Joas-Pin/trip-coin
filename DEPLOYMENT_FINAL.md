@@ -131,13 +131,77 @@ docker compose -f docker-compose.prod.yml logs -f
 
 ---
 
-## Passo 9: Configurar Regras de Firewall Oracle
+## Passo 9: Configurar Regras de Firewall (Oracle Cloud + Ubuntu)
 
-1. No Oracle Cloud Console, vá para Compute > Instances > Sua VM > Resources > Subnet
-2. Edite a Security List
-3. Adicione regras de entrada:
-   - **Porta 80 (HTTP)**: CIDR 0.0.0.0/0
-   - **Porta 443 (HTTPS)**: CIDR 0.0.0.0/0
+### 9.1: Regras de Entrada no Oracle Cloud Console (Obrigatório!)
+1. Acesse o [Oracle Cloud Console](https://cloud.oracle.com/)
+2. Vá para **Compute > Instances > Sua VM (Trip-App-VM)**
+3. Na seção **Resources**, clique em **Subnet** (deve haver uma subnet padrão)
+4. Na página da Subnet, clique em **Security Lists**
+5. Clique na **Security List padrão** (geralmente chamada de `Default Security List for ...`)
+6. Clique em **Add Ingress Rules**
+7. Adicione as seguintes regras de entrada (uma por vez):
+
+---
+
+#### Regra 1: Permitir HTTP (Porta 80)
+| Campo | Valor |
+|-------|-------|
+| Stateless | **No** (Deixe desmarcado) |
+| Source Type | **CIDR** |
+| Source CIDR | `0.0.0.0/0` |
+| IP Protocol | **TCP** |
+| Source Port Range | Deixe vazio |
+| Destination Port Range | `80` |
+| Description | `Permitir HTTP (web)` |
+
+Clique em **Add Ingress Rule**
+
+---
+
+#### Regra 2: Permitir HTTPS (Porta 443)
+| Campo | Valor |
+|-------|-------|
+| Stateless | **No** |
+| Source Type | **CIDR** |
+| Source CIDR | `0.0.0.0/0` |
+| IP Protocol | **TCP** |
+| Source Port Range | Deixe vazio |
+| Destination Port Range | `443` |
+| Description | `Permitir HTTPS (web seguro)` |
+
+Clique em **Add Ingress Rule**
+
+---
+
+#### Regra 3: Permitir SSH (Porta 22) (Já deve existir!)
+Verifique se já há uma regra para porta 22 — se não, adicione-a:
+| Campo | Valor |
+|-------|-------|
+| Stateless | **No** |
+| Source Type | **CIDR** |
+| Source CIDR | `SEU-IP-LOCAL/32` (ou `0.0.0.0/0` para acesso de qualquer lugar, menos seguro) |
+| IP Protocol | **TCP** |
+| Source Port Range | Deixe vazio |
+| Destination Port Range | `22` |
+| Description | `Permitir SSH` |
+
+---
+
+### 9.2: Configurar Firewall Ubuntu (ufw) (Opcional, mas Recomendado)
+Na VM, configure o `ufw` para permitir apenas as portas necessárias:
+```bash
+# Habilitar ufw
+sudo ufw enable
+
+# Permitir SSH, HTTP e HTTPS
+sudo ufw allow 22/tcp
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+
+# Verificar status
+sudo ufw status
+```
 
 ---
 

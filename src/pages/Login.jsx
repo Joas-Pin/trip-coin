@@ -228,10 +228,13 @@ export default function Login() {
   };
 
   const handleGoogle = async () => {
+    // Use a URL explícita do env se disponível, senão a origin atual
+    const redirectUrl = import.meta.env.VITE_AUTH_REDIRECT_URL || window.location.origin;
+    
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: redirectUrl,
       },
     });
 
