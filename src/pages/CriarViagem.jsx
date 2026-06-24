@@ -14,13 +14,14 @@ import { CheckCircle2, ChevronLeft, ChevronRight, Plus, Trash2, Save } from 'luc
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import clientesApi from "@/api/clientes";
+import departamentosApi from "@/api/departamentos";
 import viagensApi from "@/api/viagens";
 import trajetosApi from "@/api/trajetos";
 import taxasAntecipadasApi from "@/api/taxasAntecipadas";
 import calculosAlimentacaoApi from "@/api/calculosAlimentacao";
 import fechamentosApi from "@/api/fechamentos";
 import notificacoesApi from "@/api/notificacoes";
-import { listProfilesByRole } from "@/api/profiles";
+import { listAllProfiles } from "@/api/profiles";
 
 const MEIOS_LOCOMOCAO = ['Avião', 'Carro', 'Ônibus', 'Van', 'Trem', 'Barco', 'Outro'];
 const TIPOS_TAXA = ['Hospedagem', 'Passagem Aérea', 'Aluguel de veículo', 'Outros'];
@@ -38,7 +39,8 @@ export default function CriarViagem() {
   const { sanitizeInput, sanitizeObject, checkRateLimit } = useSecurity();
   const [step, setStep] = useState(1);
   const [clientes, setClientes] = useState([]);
-  const [gestores, setGestores] = useState([]);
+  const [departamentos, setDepartamentos] = useState([]);
+  const [allProfiles, setAllProfiles] = useState([]);
   const [saving, setSaving] = useState(false);
 
   const [dados, setDados] = useState({
@@ -73,12 +75,14 @@ export default function CriarViagem() {
   useEffect(() => {
     if (!user) return;
     const load = async () => {
-      const [clts, gests] = await Promise.all([
+      const [clts, deps, profiles] = await Promise.all([
         clientesApi.list({ orderBy: "nome" }),
-        listProfilesByRole("gestor"),
+        departamentosApi.listWithGestor({ orderBy: "nome" }),
+        listAllProfiles(),
       ]);
       setClientes(clts);
-      setGestores(gests);
+      setDepartamentos(deps);
+      setAllProfiles(profiles);
     };
     load();
   }, [user]);
@@ -96,8 +100,21 @@ export default function CriarViagem() {
     }
   }
 
+  function handleDepartamentoSelect(deptoId) {
+    const depto = departamentos.find(d => d.id === deptoId);
+    updateDado('depto', deptoId);
+    if (depto && depto.gestor_id) {
+      const gestor = allProfiles.find(p => p.id === depto.gestor_id);
+      updateDado('gestor_id', depto.gestor_id);
+      updateDado('gestor_nome', gestor?.nome || '');
+    } else {
+      updateDado('gestor_id', '');
+      updateDado('gestor_nome', '');
+    }
+  }
+
   function handleGestorSelect(gestorId) {
-    const gestor = gestores.find(g => g.id === gestorId);
+    const gestor = allProfiles.find(g => g.id === gestorId);
     updateDado('gestor_id', gestorId);
     updateDado('gestor_nome', gestor?.nome || '');
   }
@@ -296,12 +313,16 @@ export default function CriarViagem() {
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label>Departamento</Label>
-                    <Input
-                      value={dados.depto}
-                      onChange={e => updateDado('depto', e.target.value)}
-                      placeholder="Ex: Engenharia"
-                      className="bg-input border-border"
-                    />
+                    <Select value={dados.depto} onValueChange={handleDepartamentoSelect}>
+                      <SelectTrigger className="bg-input border-border">
+                        <SelectValue placeholder="Selecionar departamento" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departamentos.map(d => (
+                          <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-1.5">
                     <Label>Qtd. Colaboradores</Label>
@@ -364,16 +385,11 @@ export default function CriarViagem() {
                   </div>
                   <div className="space-y-1.5 sm:col-span-2">
                     <Label>Gestor Responsável</Label>
-                    <Select value={dados.gestor_id} onValueChange={handleGestorSelect}>
-                      <SelectTrigger className="bg-input border-border">
-                        <SelectValue placeholder="Selecionar gestor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {gestores.map(g => (
-                          <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      value={dados.gestor_nome || 'Nenhum gestor atribuído'}
+                      disabled
+                      className="bg-input border-border opacity-70 cursor-not-allowed"
+                    />
                   </div>
                 </div>
               </CardContent>

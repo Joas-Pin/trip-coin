@@ -88,19 +88,9 @@ export function sanitizeInput(input) {
     FORCE_BODY: true,
   });
   
-  // Additional aggressive sanitization
+  // Remove control characters and trim
   sanitized = sanitized
-    // Replace dangerous characters
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;')
-    .replace(/`/g, '&#x60;')
-    // Remove control characters
     .replace(/[\x00-\x1F\x7F]/g, '')
-    // Trim whitespace
     .trim();
   
   return sanitized;
