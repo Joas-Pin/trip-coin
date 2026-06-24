@@ -1,12 +1,45 @@
 -- =============================================
--- SCRIPT: Delete em Cascata (Versão CORRIGIDA!)
--- Objetivo: Deletar em ORDEM CORRETA para não violar foreign keys!
+-- SCRIPT: Delete em Cascata (Versão 3 - FINAL!)
+-- Objetivo: Tratar TODAS as foreign keys, incluindo `assigned_by`!
 -- Execute este script no Editor SQL do Supabase!
 -- =============================================
 
 -- =============================================
--- 1. Primeiro, vamos garantir que TODAS as foreign keys existem com ON DELETE CASCADE!
+-- 1. Garantir que TODAS as foreign keys existem com ON DELETE CASCADE (incluindo `assigned_by`!)
 -- =============================================
+
+-- Tabela usuario_departamento: usuario_id
+DO $$ BEGIN
+  ALTER TABLE usuario_departamento
+  DROP CONSTRAINT IF EXISTS usuario_departamento_usuario_id_fkey;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE usuario_departamento
+  ADD CONSTRAINT usuario_departamento_usuario_id_fkey
+  FOREIGN KEY (usuario_id) REFERENCES profiles(id) ON DELETE CASCADE;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END $$;
+
+-- Tabela usuario_departamento: assigned_by (SET NULL para manter histórico, ou CASCADE)
+-- Vamos usar SET NULL para manter o registro, mas se quiser deletar, use CASCADE
+DO $$ BEGIN
+  ALTER TABLE usuario_departamento
+  DROP CONSTRAINT IF EXISTS usuario_departamento_assigned_by_fkey;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE usuario_departamento
+  ADD CONSTRAINT usuario_departamento_assigned_by_fkey
+  FOREIGN KEY (assigned_by) REFERENCES profiles(id) ON DELETE SET NULL;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END $$;
 
 -- Tabela notificacoes (viagem_id)
 DO $$ BEGIN
@@ -24,18 +57,18 @@ EXCEPTION
   WHEN OTHERS THEN NULL;
 END $$;
 
--- Tabela usuario_departamento (usuario_id)
+-- Tabela notificacoes (user_id)
 DO $$ BEGIN
-  ALTER TABLE usuario_departamento
-  DROP CONSTRAINT IF EXISTS usuario_departamento_usuario_id_fkey;
+  ALTER TABLE notificacoes
+  DROP CONSTRAINT IF EXISTS notificacoes_user_id_fkey;
 EXCEPTION
   WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
-  ALTER TABLE usuario_departamento
-  ADD CONSTRAINT usuario_departamento_usuario_id_fkey
-  FOREIGN KEY (usuario_id) REFERENCES profiles(id) ON DELETE CASCADE;
+  ALTER TABLE notificacoes
+  ADD CONSTRAINT notificacoes_user_id_fkey
+  FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE;
 EXCEPTION
   WHEN OTHERS THEN NULL;
 END $$;
@@ -136,6 +169,22 @@ EXCEPTION
   WHEN OTHERS THEN NULL;
 END $$;
 
+-- Tabela fechamentos (aprovador_id)
+DO $$ BEGIN
+  ALTER TABLE fechamentos
+  DROP CONSTRAINT IF EXISTS fechamentos_aprovador_id_fkey;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE fechamentos
+  ADD CONSTRAINT fechamentos_aprovador_id_fkey
+  FOREIGN KEY (aprovador_id) REFERENCES profiles(id) ON DELETE SET NULL;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END $$;
+
 -- Tabela aprovacoes (fechamento_id)
 DO $$ BEGIN
   ALTER TABLE aprovacoes
@@ -152,6 +201,22 @@ EXCEPTION
   WHEN OTHERS THEN NULL;
 END $$;
 
+-- Tabela aprovacoes (aprovador_id)
+DO $$ BEGIN
+  ALTER TABLE aprovacoes
+  DROP CONSTRAINT IF EXISTS aprovacoes_aprovador_id_fkey;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE aprovacoes
+  ADD CONSTRAINT aprovacoes_aprovador_id_fkey
+  FOREIGN KEY (aprovador_id) REFERENCES profiles(id) ON DELETE SET NULL;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END $$;
+
 -- Tabela comprovantes (viagem_id)
 DO $$ BEGIN
   ALTER TABLE comprovantes
@@ -164,6 +229,22 @@ DO $$ BEGIN
   ALTER TABLE comprovantes
   ADD CONSTRAINT comprovantes_viagem_id_fkey
   FOREIGN KEY (viagem_id) REFERENCES viagens(id) ON DELETE CASCADE;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END $$;
+
+-- Tabela departamento_audit_logs (performed_by)
+DO $$ BEGIN
+  ALTER TABLE departamento_audit_logs
+  DROP CONSTRAINT IF EXISTS departamento_audit_logs_performed_by_fkey;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE departamento_audit_logs
+  ADD CONSTRAINT departamento_audit_logs_performed_by_fkey
+  FOREIGN KEY (performed_by) REFERENCES profiles(id) ON DELETE SET NULL;
 EXCEPTION
   WHEN OTHERS THEN NULL;
 END $$;
@@ -267,5 +348,5 @@ CREATE TRIGGER on_profile_deleted
   FOR EACH ROW EXECUTE FUNCTION public.on_profile_deleted();
 
 -- =============================================
--- FIM DO SCRIPT (VERSÃO CORRIGIDA!)
+-- FIM DO SCRIPT (Versão 3 - FINAL!)
 -- =============================================

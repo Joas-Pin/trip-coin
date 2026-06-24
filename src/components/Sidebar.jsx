@@ -64,8 +64,12 @@ export default function Sidebar({ onClose }) {
     <div className="flex flex-col h-full w-72 bg-sidebar border-r border-sidebar-border">
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 h-16 border-b border-sidebar-border shrink-0">
-        <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center shadow-lg shadow-primary/25">
-          <Plane className="h-5 w-5 text-white" />
+        <div className="flex justify-center py-6">
+          <img
+            src="/apple-touch-icon.png"
+            alt="Trip Close"
+            className='h-12 w-auto' 
+          />
         </div>
         <div>
           <h1 className="font-bold text-base text-foreground leading-tight">TripClose</h1>
