@@ -76,8 +76,8 @@ export default function Sidebar({ onClose }) {
           <p className="text-xs text-muted-foreground">Grupo Enviegas</p>
         </div>
         {onClose && (
-          <button onClick={onClose} className="ml-auto lg:hidden p-1 rounded-md hover:bg-accent/10">
-            <ChevronLeft className="h-4 w-4 text-muted-foreground" />
+          <button onClick={onClose} className="ml-auto lg:hidden p-3 rounded-md hover:bg-accent/10 touch-target">
+            <ChevronLeft className="h-5 w-5 text-muted-foreground" />
           </button>
         )}
       </div>
@@ -93,13 +93,13 @@ export default function Sidebar({ onClose }) {
               key={item.to}
               to={item.to}
               className={cn(
-                'flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
+                'flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium transition-all duration-200 min-h-[48px]',
                 isActive
                   ? 'bg-primary/10 text-primary shadow-sm'
                   : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent'
               )}
             >
-              <Icon className={cn('h-4 w-4', isActive && 'text-primary')} />
+              <Icon className={cn('h-5 w-5', isActive && 'text-primary')} />
               {item.label}
             </Link>
           );
@@ -108,15 +108,15 @@ export default function Sidebar({ onClose }) {
 
       {/* Footer */}
       <div className="px-3 py-4 border-t border-sidebar-border shrink-0 space-y-2">
-        <div className="px-4 py-2 rounded-xl bg-sidebar-accent/50">
+        <div className="px-4 py-3 rounded-xl bg-sidebar-accent/50">
           <p className="text-xs text-muted-foreground truncate">{profile?.nome || user?.user_metadata?.full_name || user?.email || 'Usuário'}</p>
           <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">{normalizedRole}</p>
         </div>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-sidebar-foreground/70 hover:text-red-400 hover:bg-red-400/10 transition-all duration-200 w-full"
+          className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium text-sidebar-foreground/70 hover:text-red-400 hover:bg-red-400/10 transition-all duration-200 w-full min-h-[48px]"
         >
-          <LogOut className="h-4 w-4" />
+          <LogOut className="h-5 w-5" />
           Sair
         </button>
       </div>

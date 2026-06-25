@@ -43,11 +43,11 @@ export default function Layout() {
             className="lg:hidden mr-2"
             onClick={() => setSidebarOpen(true)}
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-6 w-6" />
           </Button>
         </HeaderBar>
 
-        <main className="flex-1 overflow-y-auto pb-20 lg:pb-6 px-4 sm:px-6 lg:px-8">
+        <main className="flex-1 overflow-y-auto pb-24 lg:pb-6 px-4 sm:px-6 lg:px-8 pt-safe">
           <Outlet />
         </main>
 

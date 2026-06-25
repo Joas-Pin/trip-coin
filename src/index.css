@@ -109,3 +109,47 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* Mobile improvements */
+@layer base {
+  html {
+    scroll-smooth: true;
+  }
+
+  /* Minimum 16px for all text content on mobile */
+  @media (max-width: 640px) {
+    p, span, div, li, label {
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+  }
+}
+
+/* Touch-friendly tap targets */
+@layer utilities {
+  .touch-target {
+    min-height: 48px;
+    min-width: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Prevent text selection on interactive elements for better mobile UX */
+button, a, input, textarea, select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Hide scrollbars but keep functionality */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
