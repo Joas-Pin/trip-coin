@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from '@/components/Sidebar';
 import MobileNav from '@/components/MobileNav';
@@ -9,17 +9,38 @@ import { Button } from '@/components/ui/button';
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const sidebarRef = useRef(null);
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
 
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
 
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.changedTouches[0].screenX;
+  };
+
+  const handleTouchEnd = (e) => {
+    touchEndX.current = e.changedTouches[0].screenX;
+    handleSwipe();
+  };
+
+  const handleSwipe = () => {
+    if (touchEndX.current - touchStartX.current > 50 && !sidebarOpen) {
+      setSidebarOpen(true);
+    }
+    if (touchStartX.current - touchEndX.current > 50 && sidebarOpen) {
+      setSidebarOpen(false);
+    }
+  };
+
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className="flex h-screen bg-background overflow-hidden" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       {/* Overlay mobile */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden animate-fade-in"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -30,7 +51,7 @@ export default function Layout() {
       </div>
 
       {/* Sidebar mobile drawer */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-72 transform transition-transform duration-300 ease-out lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div ref={sidebarRef} className={`fixed inset-y-0 left-0 z-50 w-72 transform transition-transform duration-300 ease-out lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <Sidebar onClose={() => setSidebarOpen(false)} />
       </div>
 
@@ -40,7 +61,7 @@ export default function Layout() {
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden mr-2"
+            className="lg:hidden mr-2 touch-target"
             onClick={() => setSidebarOpen(true)}
           >
             <Menu className="h-6 w-6" />

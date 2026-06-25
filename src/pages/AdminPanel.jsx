@@ -379,21 +379,21 @@ export default function AdminPanel() {
       </div>
 
       <Tabs defaultValue="departamentos">
-        <TabsList className="bg-card border border-border p-1 rounded-xl flex-wrap">
-          <TabsTrigger value="clientes" className="text-xs gap-1.5">
-            <Building2 className="h-3 w-3" /> Clientes
+        <TabsList className="bg-card border border-border p-1 rounded-xl flex-nowrap overflow-x-auto no-scrollbar gap-1">
+          <TabsTrigger value="clientes" className="text-xs gap-1.5 shrink-0">
+            <Building2 className="h-4 w-4" /> Clientes
           </TabsTrigger>
-          <TabsTrigger value="departamentos" className="text-xs gap-1.5">
-            <Building className="h-3 w-3" /> Departamentos
+          <TabsTrigger value="departamentos" className="text-xs gap-1.5 shrink-0">
+            <Building className="h-4 w-4" /> Departamentos
           </TabsTrigger>
-          <TabsTrigger value="viagens" className="text-xs gap-1.5">
-            <Plane className="h-3 w-3" /> Viagens
+          <TabsTrigger value="viagens" className="text-xs gap-1.5 shrink-0">
+            <Plane className="h-4 w-4" /> Viagens
           </TabsTrigger>
-          <TabsTrigger value="usuarios" className="text-xs gap-1.5">
-            <Users className="h-3 w-3" /> Usuários
+          <TabsTrigger value="usuarios" className="text-xs gap-1.5 shrink-0">
+            <Users className="h-4 w-4" /> Usuários
           </TabsTrigger>
-          <TabsTrigger value="auditoria" className="text-xs gap-1.5">
-            <History className="h-3 w-3" /> Auditoria
+          <TabsTrigger value="auditoria" className="text-xs gap-1.5 shrink-0">
+            <History className="h-4 w-4" /> Auditoria
           </TabsTrigger>
         </TabsList>
 
