@@ -92,20 +92,32 @@ export async function uploadComprovante({ file, viagemId, prefix = "" }) {
   console.debug('[Storage] Upload successful!');
 
   console.log({
-  bucket: BUCKET,
-  path,
+    bucket: BUCKET,
+    path,
   });
 
+  // For private bucket, we'll store just the path and generate signed URLs on demand
+  // We can still try to get a public URL in case the bucket is public
   const pub = sb.storage.from(BUCKET).getPublicUrl(path);
-  if (pub.error) throw pub.error;
+  const publicUrl = pub.error ? null : pub.data.publicUrl;
   
-  console.debug('[Storage] Public URL:', pub.data.publicUrl);
-  return { path, publicUrl: pub.data.publicUrl, fileType: validation.fileType };
+  console.debug('[Storage] File uploaded successfully:', { path, publicUrl });
+  return { path, publicUrl, fileType: validation.fileType };
 }
 
 export async function removeComprovante(path) {
   const q = getSupabase().storage.from(BUCKET).remove([path]);
   return unwrap(await q);
+}
+
+export async function getSignedUrl(path, expiresIn = 3600) {
+  const sb = getSupabase();
+  const { data, error } = await sb.storage.from(BUCKET).createSignedUrl(path, expiresIn);
+  if (error) {
+    console.error('[Storage] Error creating signed URL:', error);
+    throw error;
+  }
+  return data.signedUrl;
 }
 
 export async function getPublicUrl(path) {

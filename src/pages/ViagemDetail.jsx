@@ -31,7 +31,7 @@ import aprovacoesApi from "@/api/aprovacoes";
 import comprovantesApi, { extractChaveAcesso } from "@/api/comprovantes";
 import notificacoesApi from "@/api/notificacoes";
 import { listProfilesByRole } from "@/api/profiles";
-import { ensureComprovantesBucket, uploadComprovante, validateFile } from "@/api/storage";
+import { ensureComprovantesBucket, uploadComprovante, validateFile, getSignedUrl } from "@/api/storage";
 import QrScanner from "@/components/QrScanner";
 
 const statusMap = {
@@ -130,6 +130,7 @@ export default function ViagemDetail() {
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [processingQr, setProcessingQr] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [loadingComprovanteUrl, setLoadingComprovanteUrl] = useState(null);
 
   const handleUploadComprovante = async (e) => {
     const file = e.target.files?.[0];
@@ -258,6 +259,45 @@ export default function ViagemDetail() {
   const handleQrScan = (chave, rawText) => {
     setQrCodeUrl(rawText);
     handleSubmitQrCode(rawText);
+  };
+
+  const handleOpenComprovante = async (comprovante, isDownload = false) => {
+    if (!comprovante.file_path && !comprovante.file_url) {
+      toast.error('Nenhum arquivo encontrado para este comprovante');
+      return;
+    }
+
+    try {
+      setLoadingComprovanteUrl(comprovante.id);
+      
+      let url = comprovante.file_url;
+      
+      // If we have a file_path but no file_url, or if the existing URL might be stale, get a signed URL
+      if (comprovante.file_path) {
+        url = await getSignedUrl(comprovante.file_path);
+      }
+
+      if (url) {
+        if (isDownload) {
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = comprovante.file_name || 'comprovante';
+          a.target = '_blank';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        } else {
+          window.open(url, '_blank', 'noopener,noreferrer');
+        }
+      } else {
+        toast.error('Não foi possível abrir o comprovante');
+      }
+    } catch (error) {
+      console.error('Error opening comprovante:', error);
+      toast.error(`Erro ao abrir comprovante: ${error.message || 'Tente novamente'}`);
+    } finally {
+      setLoadingComprovanteUrl(null);
+    }
   };
 
   const handleEditValor = async (comprovante, novoValor) => {
@@ -784,16 +824,9 @@ export default function ViagemDetail() {
               ) : (
                 <div className="space-y-3">
                   {comprovantes.map((c) => {
-                    // Determine the correct URL to use
-                    let url = c.file_url;
-                    // If no file_url but we have file_path, generate public URL
-                    if (!url && c.file_path) {
-                      // We can use a helper, but let's just build it directly for existing data
-                      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-                      if (supabaseUrl) {
-                        url = `${supabaseUrl}/storage/v1/object/public/comprovantes/${encodeURIComponent(c.file_path)}`;
-                      }
-                    }
+                    const isLoading = loadingComprovanteUrl === c.id;
+                    const hasFile = c.file_path || c.file_url;
+                    
                     return (
                       <div key={c.id} className="p-4 rounded-xl bg-background/50 border border-border/50">
                         <div className="flex items-start gap-3">
@@ -834,18 +867,26 @@ export default function ViagemDetail() {
                             </div>
                           </div>
                           <div className="flex flex-col gap-1">
-                            {url && (
+                            {hasFile && (
                               <>
-                                <a href={url} target="_blank" rel="noopener noreferrer" className="block">
-                                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <Eye className="h-3.5 w-3.5" />
-                                  </Button>
-                                </a>
-                                <a href={url} target="_blank" rel="noopener noreferrer" download className="block">
-                                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <Download className="h-3.5 w-3.5" />
-                                  </Button>
-                                </a>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8"
+                                  onClick={() => handleOpenComprovante(c, false)}
+                                  disabled={isLoading}
+                                >
+                                  {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8"
+                                  onClick={() => handleOpenComprovante(c, true)}
+                                  disabled={isLoading}
+                                >
+                                  {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                                </Button>
                               </>
                             )}
                             {canEdit && (

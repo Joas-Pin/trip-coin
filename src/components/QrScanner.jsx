@@ -70,6 +70,27 @@ export default function QrScanner({ onScan, onClose }) {
     }
   };
 
+  // Wait for video element to be available
+  const waitForVideoRef = () => {
+    return new Promise((resolve, reject) => {
+      const maxAttempts = 20;
+      let attempts = 0;
+      
+      const check = () => {
+        attempts++;
+        if (videoRef.current) {
+          resolve(videoRef.current);
+        } else if (attempts >= maxAttempts) {
+          reject(new Error('Elemento de vídeo não encontrado'));
+        } else {
+          setTimeout(check, 50);
+        }
+      };
+      
+      check();
+    });
+  };
+
   const handleStartCamera = async (deviceId = undefined) => {
     setError('');
     setStatus('Acessando câmera...');
@@ -81,6 +102,12 @@ export default function QrScanner({ onScan, onClose }) {
         codeReaderRef.current.reset();
       }
 
+      // Set isCameraActive first to render the video element
+      setIsCameraActive(true);
+      
+      // Wait for video ref to be available
+      const videoElement = await waitForVideoRef();
+
       // Initialize QR code reader with better settings
       codeReaderRef.current = new BrowserQRCodeReader({
         delayBetweenScanAttempts: 300,
@@ -91,15 +118,10 @@ export default function QrScanner({ onScan, onClose }) {
         video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'environment' }
       });
 
-      // Ensure video element is ready
-      if (!videoRef.current) {
-        throw new Error('Elemento de vídeo não encontrado');
-      }
-
       // Request permission and start decoding
       await codeReaderRef.current.decodeFromVideoDevice(
         deviceId || undefined,
-        videoRef.current,
+        videoElement,
         (result, err) => {
           if (!mountedRef.current) return;
           
@@ -114,13 +136,13 @@ export default function QrScanner({ onScan, onClose }) {
       );
 
       setStatus('Aponte o QR Code da NFC-e para a câmera');
-      setIsCameraActive(true);
       
       // List available cameras for switching
       await listCameras();
       
     } catch (err) {
       console.error('Camera Error:', err);
+      setIsCameraActive(false);
       
       // Handle specific camera errors with user-friendly messages
       if (err.name === 'NotAllowedError' || err.message?.includes('permission') || err.message?.includes('denied')) {
@@ -133,6 +155,7 @@ export default function QrScanner({ onScan, onClose }) {
         // Try with default constraints if specific ones fail
         if (!deviceId) {
           setStatus('Tentando com configurações padrão...');
+          setIsCameraActive(false);
           await handleStartCameraFallback();
           return;
         }
@@ -158,6 +181,12 @@ export default function QrScanner({ onScan, onClose }) {
         codeReaderRef.current.reset();
       }
 
+      // Set isCameraActive first to render video element
+      setIsCameraActive(true);
+      
+      // Wait for video ref
+      const videoElement = await waitForVideoRef();
+
       codeReaderRef.current = new BrowserQRCodeReader(
         { delayBetweenScanAttempts: 500, tryHarder: true },
         { audio: false, video: true }
@@ -165,7 +194,7 @@ export default function QrScanner({ onScan, onClose }) {
 
       await codeReaderRef.current.decodeFromVideoDevice(
         undefined,
-        videoRef.current,
+        videoElement,
         (result, err) => {
           if (!mountedRef.current) return;
           if (result) handleResult(result.text);
@@ -174,10 +203,10 @@ export default function QrScanner({ onScan, onClose }) {
       );
 
       setStatus('Aponte o QR Code da NFC-e para a câmera');
-      setIsCameraActive(true);
       await listCameras();
     } catch (fallbackErr) {
       console.error('Fallback camera error:', fallbackErr);
+      setIsCameraActive(false);
       setError('Não foi possível acessar a câmera. Tente usar a opção de upload de imagem.');
     } finally {
       if (mountedRef.current) {
@@ -312,6 +341,11 @@ export default function QrScanner({ onScan, onClose }) {
             </div>
           ) : (
             <div className="space-y-3">
+              {/* Always render the video element (hidden) so ref can be set */}
+              <div className="hidden">
+                <video ref={videoRef} playsInline muted />
+              </div>
+              
               <Button
                 onClick={() => handleStartCamera()}
                 disabled={scanning}
