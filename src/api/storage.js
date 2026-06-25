@@ -108,4 +108,10 @@ export async function removeComprovante(path) {
   return unwrap(await q);
 }
 
+export async function getPublicUrl(path) {
+  const sb = getSupabase();
+  const { data } = sb.storage.from(BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
 export { BUCKET, MAX_FILE_SIZE, ALLOWED_TYPES };

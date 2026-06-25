@@ -172,7 +172,7 @@ export default function ViagemDetail() {
         await comprovantesApi.createWithOCR(
           {
             ...comprovanteData,
-            file_url: uploaded.path,
+            file_path: uploaded.path,
             file_name: file.name,
             file_type: uploaded.fileType,
             file_size: file.size,
@@ -211,7 +211,7 @@ export default function ViagemDetail() {
     if (!confirm('Tem certeza que deseja excluir este comprovante?')) return;
     
     try {
-      await comprovantesApi.removeWithFile(comprovante.id, comprovante.file_url);
+      await comprovantesApi.removeWithFile(comprovante.id, comprovante.file_path);
       toast.success('Comprovante removido com sucesso!');
       await loadData();
     } catch (err) {
@@ -784,70 +784,86 @@ export default function ViagemDetail() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {comprovantes.map(c => (
-                    <div key={c.id} className="p-4 rounded-xl bg-background/50 border border-border/50">
-                      <div className="flex items-start gap-3">
-                        <div className="shrink-0">
-                          {c.file_type?.toLowerCase() === 'pdf' ? (
-                            <FileType className="h-10 w-10 text-red-400" />
-                          ) : (
-                            <ImageIcon className="h-10 w-10 text-blue-400" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate">
-                            {c.file_name || c.nome_estabelecimento || 'Comprovante'}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {c.file_size ? `${(c.file_size / 1024 / 1024).toFixed(2)}MB` : ''}
-                            {c.file_type ? ` • ${c.file_type}` : ''}
-                          </p>
-                          <div className="mt-2 flex items-center gap-2">
-                            <div className="flex-1">
-                              <Label className="text-xs text-muted-foreground">Valor</Label>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={c.valor_total || ''}
-                                onChange={(e) => handleEditValor(c, e.target.value)}
-                                placeholder="0,00"
-                                className="h-7 text-xs mt-0.5 bg-input border-border"
-                              />
+                  {comprovantes.map((c) => {
+                    // Determine the correct URL to use
+                    let url = c.file_url;
+                    // If no file_url but we have file_path, generate public URL
+                    if (!url && c.file_path) {
+                      // We can use a helper, but let's just build it directly for existing data
+                      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+                      if (supabaseUrl) {
+                        url = `${supabaseUrl}/storage/v1/object/public/comprovantes/${encodeURIComponent(c.file_path)}`;
+                      }
+                    }
+                    return (
+                      <div key={c.id} className="p-4 rounded-xl bg-background/50 border border-border/50">
+                        <div className="flex items-start gap-3">
+                          <div className="shrink-0">
+                            {c.file_type?.toLowerCase() === 'pdf' ? (
+                              <FileType className="h-10 w-10 text-red-400" />
+                            ) : (
+                              <ImageIcon className="h-10 w-10 text-blue-400" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate">
+                              {c.file_name || c.nome_estabelecimento || 'Comprovante'}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {c.file_size ? `${(c.file_size / 1024 / 1024).toFixed(2)}MB` : ''}
+                              {c.file_type ? ` • ${c.file_type}` : ''}
+                            </p>
+                            <div className="mt-2 flex items-center gap-2">
+                              <div className="flex-1">
+                                <Label className="text-xs text-muted-foreground">Valor</Label>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={c.valor_total || ''}
+                                  onChange={(e) => handleEditValor(c, e.target.value)}
+                                  placeholder="0,00"
+                                  className="h-7 text-xs mt-0.5 bg-input border-border"
+                                />
+                              </div>
+                              <Badge className={`text-[9px] ${
+                                c.ocr_status === 'concluido' ? 'bg-emerald-400/10 text-emerald-400' :
+                                c.ocr_status === 'processando' ? 'bg-amber-400/10 text-amber-400' :
+                                'bg-slate-400/10 text-slate-400'
+                              }`}>
+                                {c.ocr_status === 'concluido' ? 'OCR OK' : c.ocr_status === 'processando' ? 'Processando...' : 'Pendente'}
+                              </Badge>
                             </div>
-                            <Badge className={`text-[9px] ${
-                              c.ocr_status === 'concluido' ? 'bg-emerald-400/10 text-emerald-400' :
-                              c.ocr_status === 'processando' ? 'bg-amber-400/10 text-amber-400' :
-                              'bg-slate-400/10 text-slate-400'
-                            }`}>
-                              {c.ocr_status === 'concluido' ? 'OCR OK' : c.ocr_status === 'processando' ? 'Processando...' : 'Pendente'}
-                            </Badge>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            {url && (
+                              <>
+                                <a href={url} target="_blank" rel="noopener noreferrer" className="block">
+                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <Eye className="h-3.5 w-3.5" />
+                                  </Button>
+                                </a>
+                                <a href={url} target="_blank" rel="noopener noreferrer" download className="block">
+                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <Download className="h-3.5 w-3.5" />
+                                  </Button>
+                                </a>
+                              </>
+                            )}
+                            {canEdit && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                                onClick={() => handleDeleteComprovante(c)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                           </div>
                         </div>
-                        <div className="flex flex-col gap-1">
-                          <a href={c.file_url} target="_blank" rel="noopener noreferrer" className="block">
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <Eye className="h-3.5 w-3.5" />
-                            </Button>
-                          </a>
-                          <a href={c.file_url} target="_blank" rel="noopener noreferrer" download className="block">
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <Download className="h-3.5 w-3.5" />
-                            </Button>
-                          </a>
-                          {canEdit && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-400/10"
-                              onClick={() => handleDeleteComprovante(c)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>

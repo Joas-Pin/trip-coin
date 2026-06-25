@@ -1,5 +1,5 @@
 import { createCrud } from "./_crud";
-import { removeComprovante } from "./storage";
+import { removeComprovante, getPublicUrl } from "./storage";
 
 const crud = createCrud("comprovantes");
 
