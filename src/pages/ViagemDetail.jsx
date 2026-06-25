@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,7 +16,6 @@ import {
   ChevronLeft, Plane, Plus, Trash2, CheckCircle2, Circle, FileText, Upload, Calculator,
   Send, ArrowRight, Download, Ban, Eye, Image as ImageIcon, FileType, Loader2, QrCode,
 } from 'lucide-react';
-import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { safeFormatDate } from '@/utils';
 import { motion } from 'framer-motion';

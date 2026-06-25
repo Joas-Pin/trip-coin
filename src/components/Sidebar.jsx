@@ -13,7 +13,6 @@ import {
   Users,
   LogOut,
   ChevronLeft,
-  Plane,
   ShieldCheck,
 } from 'lucide-react';
 

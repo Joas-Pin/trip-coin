@@ -10,7 +10,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Plane, ChevronRight, Search, Filter } from 'lucide-react';
-import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { safeFormatDate } from '@/utils';
 import viagensApi from "@/api/viagens";

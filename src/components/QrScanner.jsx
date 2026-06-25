@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { BrowserQRCodeReader, NotFoundException } from '@zxing/library';
-import { X, Camera, Upload, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, Camera, Upload, Loader2, AlertCircle, CheckCircle2, RotateCcw } from 'lucide-react';
 import { Button } from './ui/button';
 import { extractChaveAcesso } from '@/api/comprovantes';
 import { toast } from 'sonner';
@@ -10,73 +10,26 @@ export default function QrScanner({ onScan, onClose }) {
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
+  const [cameras, setCameras] = useState([]);
+  const [selectedCamera, setSelectedCamera] = useState('');
+  const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
+  
   const videoRef = useRef(null);
   const codeReaderRef = useRef(null);
   const fileInputRef = useRef(null);
+  const mountedRef = useRef(true);
 
-  const handleStartCamera = async () => {
-    setError('');
-    setStatus('Acessando câmera...');
-    setScanning(true);
-    try {
-      // Initialize QR code reader
-      codeReaderRef.current = new BrowserQRCodeReader(
-        {
-          delayBetweenScanAttempts: 300, // ms
-          tryHarder: true,
-          tryHarderWithoutRotation: false,
-        },
-        {
-          audio: false,
-        }
-      );
+  // Cleanup on unmount
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      stopCamera();
+    };
+  }, []);
 
-      // Ensure video element is mounted before accessing
-      if (!videoRef.current) {
-        throw new Error('Elemento de vídeo não encontrado');
-      }
-
-      // Request camera and start decoding
-      await codeReaderRef.current.decodeFromVideoDevice(
-        undefined, // Use default camera
-        videoRef.current,
-        (result, err) => {
-          if (result) {
-            handleResult(result.text);
-          }
-          if (err) {
-            // Ignore "not found" errors as they're expected while scanning
-            if (err instanceof NotFoundException) {
-              return;
-            }
-            console.error('QR Scan Error:', err);
-          }
-        }
-      );
-
-      setStatus('Aponte o QR Code da NFC-e para a câmera');
-      setIsCameraActive(true);
-    } catch (err) {
-      console.error('Camera Error:', err);
-      
-      // Handle specific camera errors
-      if (err.name === 'NotAllowedError' || err.message?.includes('permission')) {
-        setError('Permissão da câmera negada. Por favor, conceda acesso nas configurações do navegador.');
-      } else if (err.name === 'NotFoundError' || err.message?.includes('not found')) {
-        setError('Nenhuma câmera encontrada. Conecte uma câmera e tente novamente.');
-      } else if (err.name === 'NotReadableError' || err.message?.includes('not readable')) {
-        setError('Câmera está em uso por outro aplicativo. Feche outros apps e tente novamente.');
-      } else if (err.name === 'OverconstrainedError') {
-        setError('Câmera não suporta as configurações solicitadas.');
-      } else {
-        setError(`Erro ao acessar a câmera: ${err.message || 'Tente novamente.'}`);
-      }
-    } finally {
-      setScanning(false);
-    }
-  };
-
-  const handleStopCamera = () => {
+  // Stop camera and reset reader
+  const stopCamera = useCallback(() => {
     try {
       if (codeReaderRef.current) {
         codeReaderRef.current.reset();
@@ -87,6 +40,164 @@ export default function QrScanner({ onScan, onClose }) {
     }
     setIsCameraActive(false);
     setStatus('');
+  }, []);
+
+  // Handle camera stop
+  const handleStopCamera = () => {
+    stopCamera();
+  };
+
+  // List available cameras
+  const listCameras = async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      setCameras(videoDevices);
+      setHasMultipleCameras(videoDevices.length > 1);
+      
+      // Prefer back camera on mobile if available
+      const backCamera = videoDevices.find(d => 
+        d.label.toLowerCase().includes('back') || 
+        d.label.toLowerCase().includes('traseira')
+      );
+      if (backCamera) {
+        setSelectedCamera(backCamera.deviceId);
+      } else if (videoDevices.length > 0) {
+        setSelectedCamera(videoDevices[0].deviceId);
+      }
+    } catch (err) {
+      console.error('Error listing cameras:', err);
+    }
+  };
+
+  const handleStartCamera = async (deviceId = undefined) => {
+    setError('');
+    setStatus('Acessando câmera...');
+    setScanning(true);
+    
+    try {
+      // Clean up any existing reader
+      if (codeReaderRef.current) {
+        codeReaderRef.current.reset();
+      }
+
+      // Initialize QR code reader with better settings
+      codeReaderRef.current = new BrowserQRCodeReader({
+        delayBetweenScanAttempts: 300,
+        tryHarder: true,
+        tryHarderWithoutRotation: false,
+      }, {
+        audio: false,
+        video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'environment' }
+      });
+
+      // Ensure video element is ready
+      if (!videoRef.current) {
+        throw new Error('Elemento de vídeo não encontrado');
+      }
+
+      // Request permission and start decoding
+      await codeReaderRef.current.decodeFromVideoDevice(
+        deviceId || undefined,
+        videoRef.current,
+        (result, err) => {
+          if (!mountedRef.current) return;
+          
+          if (result) {
+            handleResult(result.text);
+          }
+          
+          if (err && !(err instanceof NotFoundException)) {
+            console.error('QR Scan Error:', err);
+          }
+        }
+      );
+
+      setStatus('Aponte o QR Code da NFC-e para a câmera');
+      setIsCameraActive(true);
+      
+      // List available cameras for switching
+      await listCameras();
+      
+    } catch (err) {
+      console.error('Camera Error:', err);
+      
+      // Handle specific camera errors with user-friendly messages
+      if (err.name === 'NotAllowedError' || err.message?.includes('permission') || err.message?.includes('denied')) {
+        setError('Permissão da câmera negada. Por favor, conceda acesso nas configurações do navegador e recarregue a página.');
+      } else if (err.name === 'NotFoundError' || err.message?.includes('not found') || err.message?.includes('no video')) {
+        setError('Nenhuma câmera encontrada. Conecte uma câmera e tente novamente.');
+      } else if (err.name === 'NotReadableError' || err.message?.includes('not readable') || err.message?.includes('in use')) {
+        setError('Câmera está em uso por outro aplicativo. Feche outros apps e tente novamente.');
+      } else if (err.name === 'OverconstrainedError') {
+        // Try with default constraints if specific ones fail
+        if (!deviceId) {
+          setStatus('Tentando com configurações padrão...');
+          await handleStartCameraFallback();
+          return;
+        }
+        setError('Câmera não suporta as configurações solicitadas.');
+      } else if (err.name === 'AbortError') {
+        setError('Operação cancelada. Tente novamente.');
+      } else if (err.name === 'TypeError') {
+        setError('Erro de configuração da câmera. Verifique se o navegador suporta acesso à câmera.');
+      } else {
+        setError(`Erro ao acessar a câmera: ${err.message || 'Tente novamente.'}`);
+      }
+    } finally {
+      if (mountedRef.current) {
+        setScanning(false);
+      }
+    }
+  };
+
+  // Fallback method with simpler constraints
+  const handleStartCameraFallback = async () => {
+    try {
+      if (codeReaderRef.current) {
+        codeReaderRef.current.reset();
+      }
+
+      codeReaderRef.current = new BrowserQRCodeReader(
+        { delayBetweenScanAttempts: 500, tryHarder: true },
+        { audio: false, video: true }
+      );
+
+      await codeReaderRef.current.decodeFromVideoDevice(
+        undefined,
+        videoRef.current,
+        (result, err) => {
+          if (!mountedRef.current) return;
+          if (result) handleResult(result.text);
+          if (err && !(err instanceof NotFoundException)) console.error('QR Scan Error:', err);
+        }
+      );
+
+      setStatus('Aponte o QR Code da NFC-e para a câmera');
+      setIsCameraActive(true);
+      await listCameras();
+    } catch (fallbackErr) {
+      console.error('Fallback camera error:', fallbackErr);
+      setError('Não foi possível acessar a câmera. Tente usar a opção de upload de imagem.');
+    } finally {
+      if (mountedRef.current) {
+        setScanning(false);
+      }
+    }
+  };
+
+  // Handle switching cameras
+  const switchCamera = async () => {
+    if (cameras.length <= 1) return;
+    
+    const currentIndex = cameras.findIndex(c => c.deviceId === selectedCamera);
+    const nextIndex = (currentIndex + 1) % cameras.length;
+    const nextCameraId = cameras[nextIndex].deviceId;
+    
+    setSelectedCamera(nextCameraId);
+    stopCamera();
+    // Small delay to ensure cleanup
+    setTimeout(() => handleStartCamera(nextCameraId), 300);
   };
 
   const handleFileUpload = async (e) => {
@@ -96,6 +207,7 @@ export default function QrScanner({ onScan, onClose }) {
     setError('');
     setStatus('Analisando imagem...');
     setScanning(true);
+    
     try {
       const reader = new BrowserQRCodeReader();
       const result = await reader.decodeFromImageElement(URL.createObjectURL(file));
@@ -108,8 +220,10 @@ export default function QrScanner({ onScan, onClose }) {
         setError('Erro ao ler o QR Code da imagem. Tente novamente.');
       }
     } finally {
-      setScanning(false);
-      setStatus('');
+      if (mountedRef.current) {
+        setScanning(false);
+        setStatus('');
+      }
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -122,19 +236,12 @@ export default function QrScanner({ onScan, onClose }) {
     if (chave) {
       setStatus('NFC-e detectada! Processando...');
       toast.success('NFC-e detectada com sucesso!');
-      handleStopCamera();
+      stopCamera();
       onScan(chave, text);
     } else {
       toast.error('QR Code não parece ser uma NFC-e válida');
     }
   };
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      handleStopCamera();
-    };
-  }, []);
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4">
@@ -180,20 +287,33 @@ export default function QrScanner({ onScan, onClose }) {
                 />
                 <div className="absolute inset-0 border-4 border-primary/50 rounded-xl pointer-events-none" />
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 border-2 border-dashed border-primary rounded-lg pointer-events-none" />
+                
+                {/* Camera switch button if multiple cameras */}
+                {hasMultipleCameras && (
+                  <button
+                    onClick={switchCamera}
+                    className="absolute bottom-3 right-3 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
+                  >
+                    <RotateCcw className="h-5 w-5" />
+                  </button>
+                )}
               </div>
-              <Button
-                variant="destructive"
-                onClick={handleStopCamera}
-                className="w-full gap-2"
-              >
-                <X className="h-4 w-4" />
-                Parar Câmera
-              </Button>
+              
+              <div className="flex gap-2">
+                <Button
+                  variant="destructive"
+                  onClick={handleStopCamera}
+                  className="flex-1 gap-2"
+                >
+                  <X className="h-4 w-4" />
+                  Parar Câmera
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="space-y-3">
               <Button
-                onClick={handleStartCamera}
+                onClick={() => handleStartCamera()}
                 disabled={scanning}
                 className="w-full gap-2"
               >
