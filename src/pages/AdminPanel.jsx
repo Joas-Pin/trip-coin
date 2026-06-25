@@ -651,44 +651,43 @@ export default function AdminPanel() {
               ) : (
                 <div className="divide-y divide-border">
                   {viagens.map(v => (
-                    <div key={v.id} className="flex items-center gap-3 p-4">
-                      <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
-                        <Plane className="h-4 w-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium">{v.codigo_documento}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {v.cliente_nome} • {v.localidade}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
-                          {v.status}
-                        </Badge>
-                        <Select 
-                          value={v.solicitante_id} 
-                          onValueChange={(val) => handleAssignViagem(v.id, val)}
-                          disabled={updatingViagem === v.id}
-                        >
-                          <SelectTrigger className="w-40 text-xs h-8">
-                            <SelectValue placeholder="Atribuir..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {colaboradores.map(u => (
-                              <SelectItem key={u.id} value={u.id} className="text-xs">
-                                {u.nome}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-400/10"
-                          onClick={() => handleDeleteViagem(v)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                    <div key={v.id} className="p-4">
+                      <div className="flex items-center gap-3 overflow-x-auto no-scrollbar touch-pan-x">
+                        <div className="min-w-max shrink-0">
+                          <p className="text-sm font-medium">{v.codigo_documento}</p>
+                          <p className="text-xs text-muted-foreground text-balance">
+                            {v.cliente_nome} • {v.localidade}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 min-w-max shrink-0">
+                          <Badge variant="outline" className="text-xs">
+                            {v.status}
+                          </Badge>
+                          <Select 
+                            value={v.solicitante_id} 
+                            onValueChange={(val) => handleAssignViagem(v.id, val)}
+                            disabled={updatingViagem === v.id}
+                          >
+                            <SelectTrigger className="w-40 text-xs h-8">
+                              <SelectValue placeholder="Atribuir..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {colaboradores.map(u => (
+                                <SelectItem key={u.id} value={u.id} className="text-xs">
+                                  {u.nome}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                            onClick={() => handleDeleteViagem(v)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
