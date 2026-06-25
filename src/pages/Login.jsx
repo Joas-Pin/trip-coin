@@ -86,6 +86,8 @@ export default function Login() {
     // }
   };
 
+  const [foundEmail, setFoundEmail] = useState("");
+
   const handleIdentify = async (e) => {
     e.preventDefault();
     if (isLockedOut) {
@@ -98,26 +100,25 @@ export default function Login() {
 
     try {
       let emailToUse = loginInput;
+      let inputIsUsername = !loginInput.includes("@");
       
       // Check if input is username (not email)
-      if (!loginInput.includes("@")) {
+      if (inputIsUsername) {
         try {
-          const profile = await getProfileByUsername(loginInput);
+          const profile = await getProfileByUsername(loginInput.toLowerCase().trim());
           if (profile?.email) {
             emailToUse = profile.email;
-          } else {
-            // If no profile found, still continue - maybe user is using email as username?
-            emailToUse = loginInput;
+            setFoundEmail(profile.email);
           }
         } catch (err) {
           // If username lookup fails for any reason, just use input as email
           console.debug("Username lookup failed, treating as email:", err);
-          emailToUse = loginInput;
         }
       }
 
       // Store the email we'll use for login
       setLoginInput(emailToUse);
+      setFoundEmail(emailToUse);
       
       // Proceed to password step
       setStep("password");
@@ -140,12 +141,13 @@ export default function Login() {
     setError("");
 
     try {
-      let emailToUse = loginInput;
+      // Use foundEmail from identify step
+      let emailToUse = foundEmail || loginInput;
       
-      // Check again if input is username (not email)
-      if (!loginInput.includes("@")) {
+      // Double-check username if needed
+      if (!emailToUse.includes("@")) {
         try {
-          const profile = await getProfileByUsername(loginInput);
+          const profile = await getProfileByUsername(emailToUse.toLowerCase().trim());
           if (profile?.email) {
             emailToUse = profile.email;
           }
@@ -250,6 +252,7 @@ export default function Login() {
     setMfaCode("");
     setPassword("");
     setError("");
+    setFoundEmail("");
   };
 
   // MFA Screen
@@ -315,7 +318,7 @@ export default function Login() {
       <AuthLayout
         icon={LogIn}
         title="Digite sua senha"
-        subtitle={`Olá, ${loginInput}`}
+        subtitle={`Olá, ${foundEmail && foundEmail !== loginInput ? loginInput : loginInput}`}
         footer={
           <Button variant="ghost" size="sm" onClick={resetStep} className="flex items-center gap-2">
             <ChevronLeft className="w-4 h-4" />

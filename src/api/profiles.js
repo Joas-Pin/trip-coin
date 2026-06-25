@@ -10,11 +10,11 @@ export async function getProfile(id) {
 
 export async function getProfileByUsername(username) {
   try {
-    // First check if the username column exists
+    // First check if the username column exists, case-insensitive search
     const { data, error } = await getSupabase()
       .from("profiles")
       .select("*")
-      .eq("username", username)
+      .ilike("username", username.trim())
       .maybeSingle();
     
     if (error) {

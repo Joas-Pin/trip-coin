@@ -9,34 +9,63 @@ import { Button } from '@/components/ui/button';
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const sidebarRef = useRef(null);
+  const layoutRef = useRef(null);
   const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
   const touchEndX = useRef(0);
 
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
 
-  const handleTouchStart = (e) => {
-    touchStartX.current = e.changedTouches[0].screenX;
-  };
+  useEffect(() => {
+    const element = layoutRef.current;
+    if (!element) return;
 
-  const handleTouchEnd = (e) => {
-    touchEndX.current = e.changedTouches[0].screenX;
-    handleSwipe();
-  };
+    const handleTouchStart = (e) => {
+      touchStartX.current = e.changedTouches[0].screenX;
+      touchStartY.current = e.changedTouches[0].screenY;
+    };
 
-  const handleSwipe = () => {
-    if (touchEndX.current - touchStartX.current > 50 && !sidebarOpen) {
-      setSidebarOpen(true);
-    }
-    if (touchStartX.current - touchEndX.current > 50 && sidebarOpen) {
-      setSidebarOpen(false);
-    }
-  };
+    const handleTouchEnd = (e) => {
+      touchEndX.current = e.changedTouches[0].screenX;
+      handleSwipe(e);
+    };
+
+    const handleSwipe = (e) => {
+      const screenWidth = window.innerWidth;
+      const firstThird = screenWidth / 3;
+      const deltaX = touchEndX.current - touchStartX.current;
+      const deltaY = Math.abs(e.changedTouches[0].screenY - touchStartY.current);
+      const SWIPE_THRESHOLD = 50;
+      const SWIPE_VERTICAL_THRESHOLD = 100;
+
+      // Only respond to horizontal swipes
+      if (deltaY > SWIPE_VERTICAL_THRESHOLD) return;
+
+      if (deltaX > SWIPE_THRESHOLD && !sidebarOpen && touchStartX.current <= firstThird) {
+        // Prevent browser back navigation
+        if (e.cancelable) e.preventDefault();
+        setSidebarOpen(true);
+      }
+      if (deltaX < -SWIPE_THRESHOLD && sidebarOpen) {
+        // Prevent browser forward navigation
+        if (e.cancelable) e.preventDefault();
+        setSidebarOpen(false);
+      }
+    };
+
+    element.addEventListener('touchstart', handleTouchStart, { passive: false });
+    element.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+    return () => {
+      element.removeEventListener('touchstart', handleTouchStart);
+      element.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [sidebarOpen]);
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+    <div ref={layoutRef} className="flex h-screen bg-background overflow-hidden">
       {/* Overlay mobile */}
       {sidebarOpen && (
         <div
@@ -51,7 +80,7 @@ export default function Layout() {
       </div>
 
       {/* Sidebar mobile drawer */}
-      <div ref={sidebarRef} className={`fixed inset-y-0 left-0 z-50 w-72 transform transition-transform duration-300 ease-out lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className={`fixed inset-y-0 left-0 z-50 w-72 transform transition-transform duration-300 ease-out lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <Sidebar onClose={() => setSidebarOpen(false)} />
       </div>
 
