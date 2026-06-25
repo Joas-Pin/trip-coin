@@ -1,0 +1,48 @@
+# A link to your hosted Supabase project
+project_id = ""
+
+# The user ID of your project's database owner
+db_owner = ""
+
+[project]
+# The ID of your Supabase project
+project_id = ""
+
+[api]
+enabled = true
+# The port to use for the local API server
+port = 54321
+# The schema to expose for your API
+schemas = ["public", "storage", "graphql_public"]
+# Extra schemas to add to the auto-generated API docs
+extra_search_path = ["public", "extensions"]
+
+[db]
+enabled = true
+# The port to use for the local database
+port = 54322
+# The local directory where your migrations are stored
+migrations = "../supabase_migrations"
+# The username to use for the local database
+user = "postgres"
+# The password to use for the local database
+password = "postgres"
+# The name of the local database
+database = "postgres"
+
+[studio]
+enabled = true
+# The port to use for Supabase Studio
+port = 54323
+
+[storage]
+enabled = true
+# The port to use for the local storage server
+file_size_limit = 10485760
+
+[functions]
+enabled = true
+verify_jwt = true
+
+[edge_config]
+enabled = true

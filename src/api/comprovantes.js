@@ -1,5 +1,6 @@
 import { createCrud } from "./_crud";
 import { removeComprovante, getPublicUrl } from "./storage";
+import { supabase } from "@/lib/supabase";
 
 const crud = createCrud("comprovantes");
 
@@ -102,8 +103,7 @@ export const comprovantes = {
     const chave = extractChaveAcesso(data.qr_code_url || fileContent || '');
     
     if (chave) {
-      // TODO: Call Supabase Edge Function to scrape Portal Nacional NF-e
-      // For now, we'll mark it as "processando"
+      // Mark as processing first
       ocrStatus = 'processando';
     } else if (fileContent) {
       // If no chave, try regular OCR on text content
@@ -114,11 +114,34 @@ export const comprovantes = {
       }
     }
 
-    return crud.create({
+    // Create the comprovante first
+    const comprovante = await crud.create({
       ...data,
+      chave_acesso: chave,
       valor_total: valorTotal,
       ocr_status: ocrStatus,
     });
+
+    // If we have a chave, trigger the scrape (don't await so it's non-blocking)
+    if (chave && comprovante) {
+      // Call Supabase Edge Function
+      try {
+        const { error } = await supabase.functions.invoke('scrape-nfce', {
+          body: {
+            chaveAcesso: chave,
+            comprovanteId: comprovante.id,
+          },
+        });
+
+        if (error) {
+          console.error('Error triggering NF-e scrape:', error);
+        }
+      } catch (error) {
+        console.error('Error calling edge function:', error);
+      }
+    }
+
+    return comprovante;
   },
 };
 
