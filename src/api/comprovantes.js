@@ -3,6 +3,43 @@ import { removeComprovante } from "./storage";
 
 const crud = createCrud("comprovantes");
 
+/**
+ * Extract 44-digit NFC-e access key from URL or string
+ */
+export const extractChaveAcesso = (input) => {
+  if (!input || typeof input !== 'string') return null;
+  
+  // Pattern for 44 consecutive digits
+  const pattern = /\b(\d{44})\b/;
+  const match = input.match(pattern);
+  
+  if (match && match[1]) {
+    return match[1];
+  }
+  
+  // Also check common query parameters like chNFe, chave, etc.
+  try {
+    const url = new URL(input.startsWith('http') ? input : `https://${input}`);
+    const params = url.searchParams;
+    
+    // Check common parameter names
+    const paramNames = ['chNFe', 'chave', 'ch', 'nfe'];
+    for (const param of paramNames) {
+      const value = params.get(param);
+      if (value && value.length === 44 && /^\d+$/.test(value)) {
+        return value;
+      }
+    }
+  } catch (e) {
+    // Not a valid URL, continue
+  }
+  
+  return null;
+};
+
+/**
+ * Extract value from text using common Brazilian currency patterns
+ */
 export const extractValueFromText = (text) => {
   if (!text || typeof text !== 'string') return null;
 
@@ -61,8 +98,15 @@ export const comprovantes = {
     let valorTotal = null;
     let ocrStatus = 'pendente';
 
-    // If we have text content, try OCR
-    if (fileContent) {
+    // Check if we have a QR code URL or chave de acesso first
+    const chave = extractChaveAcesso(data.qr_code_url || fileContent || '');
+    
+    if (chave) {
+      // TODO: Call Supabase Edge Function to scrape Portal Nacional NF-e
+      // For now, we'll mark it as "processando"
+      ocrStatus = 'processando';
+    } else if (fileContent) {
+      // If no chave, try regular OCR on text content
       const extractedValue = extractValueFromText(fileContent);
       if (extractedValue) {
         valorTotal = extractedValue;
@@ -75,7 +119,7 @@ export const comprovantes = {
       valor_total: valorTotal,
       ocr_status: ocrStatus,
     });
-  }
+  },
 };
 
 export default comprovantes;

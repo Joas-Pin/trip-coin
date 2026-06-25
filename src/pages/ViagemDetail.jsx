@@ -7,14 +7,14 @@ import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   ChevronLeft, Plane, Plus, Trash2, CheckCircle2, Circle, FileText, Upload, Calculator,
-  Send, ArrowRight, Download, Ban, Eye, Image as ImageIcon, FileType, Loader2,
+  Send, ArrowRight, Download, Ban, Eye, Image as ImageIcon, FileType, Loader2, QrCode,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -29,7 +29,7 @@ import despesasDiariasApi from "@/api/despesasDiarias";
 import fechamentosApi from "@/api/fechamentos";
 import calculosAlimentacaoApi from "@/api/calculosAlimentacao";
 import aprovacoesApi from "@/api/aprovacoes";
-import comprovantesApi from "@/api/comprovantes";
+import comprovantesApi, { extractChaveAcesso } from "@/api/comprovantes";
 import notificacoesApi from "@/api/notificacoes";
 import { listProfilesByRole } from "@/api/profiles";
 import { ensureComprovantesBucket, uploadComprovante, validateFile } from "@/api/storage";
@@ -127,6 +127,8 @@ export default function ViagemDetail() {
 
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [processingQr, setProcessingQr] = useState(false);
 
   const handleUploadComprovante = async (e) => {
     const file = e.target.files?.[0];
@@ -213,6 +215,42 @@ export default function ViagemDetail() {
     } catch (err) {
       console.error('Erro ao remover:', err);
       toast.error('Erro ao remover comprovante');
+    }
+  };
+
+  const handleSubmitQrCode = async () => {
+    if (!qrCodeUrl.trim() || !viagem) return;
+    
+    setProcessingQr(true);
+    
+    try {
+      // Check if we can extract a valid chave de acesso
+      const chave = extractChaveAcesso(qrCodeUrl);
+      
+      if (!chave) {
+        toast.error('URL ou chave de acesso inválida. Deve conter 44 dígitos.');
+        return;
+      }
+      
+      // Create comprovante with the QR code info
+      const comprovanteData = {
+        viagem_id: viagem.id,
+        tipo: 'NFC-e',
+        nome_estabelecimento: 'NFC-e',
+        qr_code_url: qrCodeUrl,
+        chave_acesso: chave,
+      };
+      
+      await comprovantesApi.createWithOCR(comprovanteData, qrCodeUrl);
+      
+      toast.success('NFC-e adicionada! Processando...');
+      setQrCodeUrl('');
+      await loadData();
+    } catch (err) {
+      console.error('Erro ao adicionar NFC-e:', err);
+      toast.error('Erro ao adicionar NFC-e');
+    } finally {
+      setProcessingQr(false);
     }
   };
 
@@ -659,30 +697,62 @@ export default function ViagemDetail() {
           <Card className="bg-card border-border">
             <CardContent className="p-4 space-y-4">
               {canEdit && (
-                <div className="space-y-3">
-                  <label className="flex flex-col items-center gap-2 px-4 py-6 rounded-xl border-2 border-dashed border-border hover:border-primary/40 cursor-pointer transition-colors bg-background/30">
-                    {uploading ? (
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    ) : (
-                      <Upload className="h-8 w-8 text-muted-foreground" />
-                    )}
-                    <div className="text-center">
-                      <p className="text-sm font-medium">
-                        {uploading ? 'Carregando...' : 'Fazer upload de comprovante'}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        PDF, PNG, JPG até 10MB
-                      </p>
+                <div className="space-y-4">
+                  {/* NFC-e QR Code Section */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium">Adicionar NFC-e via QR Code</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={qrCodeUrl}
+                        onChange={(e) => setQrCodeUrl(e.target.value)}
+                        placeholder="URL do QR Code ou chave de acesso (44 dígitos)"
+                        className="bg-input border-border flex-1"
+                      />
+                      <Button
+                        onClick={handleSubmitQrCode}
+                        disabled={processingQr || !qrCodeUrl.trim()}
+                        className="gradient-primary text-white"
+                      >
+                        {processingQr ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                        ) : (
+                          <QrCode className="h-4 w-4 mr-1" />
+                        )}
+                        Adicionar
+                      </Button>
                     </div>
-                    <input 
-                      ref={fileInputRef}
-                      type="file" 
-                      accept="application/pdf,image/png,image/jpeg,image/jpg" 
-                      onChange={handleUploadComprovante} 
-                      className="hidden" 
-                      disabled={uploading}
-                    />
-                  </label>
+                    <p className="text-[10px] text-muted-foreground">
+                      Cole o link do QR Code da NFC-e ou a chave de acesso com 44 dígitos
+                    </p>
+                  </div>
+                  
+                  {/* File Upload Section */}
+                  <div className="pt-2 border-t border-border">
+                    <Label className="text-xs font-medium mb-2 block">Upload de Arquivo</Label>
+                    <label className="flex flex-col items-center gap-2 px-4 py-6 rounded-xl border-2 border-dashed border-border hover:border-primary/40 cursor-pointer transition-colors bg-background/30">
+                      {uploading ? (
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      ) : (
+                        <Upload className="h-8 w-8 text-muted-foreground" />
+                      )}
+                      <div className="text-center">
+                        <p className="text-sm font-medium">
+                          {uploading ? 'Carregando...' : 'Fazer upload de comprovante'}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          PDF, PNG, JPG até 10MB
+                        </p>
+                      </div>
+                      <input 
+                        ref={fileInputRef}
+                        type="file" 
+                        accept="application/pdf,image/png,image/jpeg,image/jpg" 
+                        onChange={handleUploadComprovante} 
+                        className="hidden" 
+                        disabled={uploading}
+                      />
+                    </label>
+                  </div>
                 </div>
               )}
               {comprovantes.length === 0 ? (
