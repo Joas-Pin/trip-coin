@@ -172,7 +172,7 @@ export default function ViagemDetail() {
         await comprovantesApi.createWithOCR(
           {
             ...comprovanteData,
-            file_path: uploaded.path,
+            file_url: uploaded.path,
             file_name: file.name,
             file_type: uploaded.fileType,
             file_size: file.size,
@@ -211,7 +211,7 @@ export default function ViagemDetail() {
     if (!confirm('Tem certeza que deseja excluir este comprovante?')) return;
     
     try {
-      await comprovantesApi.removeWithFile(comprovante.id, comprovante.file_path);
+      await comprovantesApi.removeWithFile(comprovante.id, comprovante.file_url);
       toast.success('Comprovante removido com sucesso!');
       await loadData();
     } catch (err) {
