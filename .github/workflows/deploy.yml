@@ -1,0 +1,28 @@
+name: Deploy Automatico na VM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Acessando a VM e atualizando o projeto
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # 1. Entre na pasta do seu projeto na VM
+            cd ~/trip-app
+            
+            # 2. Atualize o código
+            git pull origin main
+            
+            # 3. Atualize e reinicie o container Docker 
+            # (Substitua pelos seus comandos reais, ex: docker compose up -d --build)
+            docker compose -f docker-compose.prod.yml down
+            docker compose -f docker-compose.prod.yml up -d --build

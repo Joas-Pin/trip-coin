@@ -61,7 +61,7 @@ export default function Sidebar({ onClose }) {
   };
 
   return (
-    <div className="flex flex-col h-full w-72 bg-sidebar border-r border-sidebar-border">
+    <div className="flex flex-col h-full w-72 bg-sidebar border-r border-sidebar-border lg:h-screen">
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 h-16 border-b border-sidebar-border shrink-0">
         <div className="flex justify-center py-6">
