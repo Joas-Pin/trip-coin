@@ -33,6 +33,7 @@ import comprovantesApi, { extractChaveAcesso } from "@/api/comprovantes";
 import notificacoesApi from "@/api/notificacoes";
 import { listProfilesByRole } from "@/api/profiles";
 import { ensureComprovantesBucket, uploadComprovante, validateFile } from "@/api/storage";
+import QrScanner from "@/components/QrScanner";
 
 const statusMap = {
   rascunho: { label: 'Rascunho', color: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
@@ -129,6 +130,7 @@ export default function ViagemDetail() {
   const fileInputRef = useRef(null);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [processingQr, setProcessingQr] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   const handleUploadComprovante = async (e) => {
     const file = e.target.files?.[0];
@@ -218,14 +220,14 @@ export default function ViagemDetail() {
     }
   };
 
-  const handleSubmitQrCode = async () => {
-    if (!qrCodeUrl.trim() || !viagem) return;
+  const handleSubmitQrCode = async (urlOrChave = qrCodeUrl) => {
+    if (!urlOrChave.trim() || !viagem) return;
     
     setProcessingQr(true);
     
     try {
       // Check if we can extract a valid chave de acesso
-      const chave = extractChaveAcesso(qrCodeUrl);
+      const chave = extractChaveAcesso(urlOrChave);
       
       if (!chave) {
         toast.error('URL ou chave de acesso inválida. Deve conter 44 dígitos.');
@@ -237,11 +239,11 @@ export default function ViagemDetail() {
         viagem_id: viagem.id,
         tipo: 'NFC-e',
         nome_estabelecimento: 'NFC-e',
-        qr_code_url: qrCodeUrl,
+        qr_code_url: urlOrChave,
         chave_acesso: chave,
       };
       
-      await comprovantesApi.createWithOCR(comprovanteData, qrCodeUrl);
+      await comprovantesApi.createWithOCR(comprovanteData, urlOrChave);
       
       toast.success('NFC-e adicionada! Processando...');
       setQrCodeUrl('');
@@ -252,6 +254,11 @@ export default function ViagemDetail() {
     } finally {
       setProcessingQr(false);
     }
+  };
+
+  const handleQrScan = (chave, rawText) => {
+    setQrCodeUrl(rawText);
+    handleSubmitQrCode(rawText);
   };
 
   const handleEditValor = async (comprovante, novoValor) => {
@@ -694,6 +701,12 @@ export default function ViagemDetail() {
 
         {/* COMPROVANTES */}
         <TabsContent value="comprovantes" className="mt-4">
+          {isScannerOpen && (
+            <QrScanner
+              onScan={handleQrScan}
+              onClose={() => setIsScannerOpen(false)}
+            />
+          )}
           <Card className="bg-card border-border">
             <CardContent className="p-4 space-y-4">
               {canEdit && (
@@ -701,28 +714,36 @@ export default function ViagemDetail() {
                   {/* NFC-e QR Code Section */}
                   <div className="space-y-2">
                     <Label className="text-xs font-medium">Adicionar NFC-e via QR Code</Label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <Input
                         value={qrCodeUrl}
                         onChange={(e) => setQrCodeUrl(e.target.value)}
                         placeholder="URL do QR Code ou chave de acesso (44 dígitos)"
                         className="bg-input border-border flex-1"
                       />
-                      <Button
-                        onClick={handleSubmitQrCode}
-                        disabled={processingQr || !qrCodeUrl.trim()}
-                        className="gradient-primary text-white"
-                      >
-                        {processingQr ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                        ) : (
-                          <QrCode className="h-4 w-4 mr-1" />
-                        )}
-                        Adicionar
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => setIsScannerOpen(true)}
+                          variant="outline"
+                          className="flex-1 sm:flex-none"
+                        >
+                          <QrCode className="h-4 w-4 mr-2" />
+                          Ler QR Code
+                        </Button>
+                        <Button
+                          onClick={handleSubmitQrCode}
+                          disabled={processingQr || !qrCodeUrl.trim()}
+                          className="gradient-primary text-white flex-1 sm:flex-none"
+                        >
+                          {processingQr ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                          ) : null}
+                          Adicionar
+                        </Button>
+                      </div>
                     </div>
                     <p className="text-[10px] text-muted-foreground">
-                      Cole o link do QR Code da NFC-e ou a chave de acesso com 44 dígitos
+                      Cole o link, use a câmera para ler o QR Code, ou envie uma imagem do cupom
                     </p>
                   </div>
                   
