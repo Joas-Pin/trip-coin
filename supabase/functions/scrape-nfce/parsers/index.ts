@@ -3,8 +3,10 @@ import { ParserSP } from "./parser-sp.ts";
 import { ParserRS } from "./parser-rs.ts";
 import { ParserPR } from "./parser-pr.ts";
 import { ParserGeneric } from "./parser-generic.ts";
+import { extractUFFromUrl } from "../utils.ts";
 
-export function getParser(uf: string): Parser {
+export function getParser(url: string): Parser {
+  const uf = extractUFFromUrl(url);
   const normalizedUf = uf.toUpperCase().trim();
 
   switch (normalizedUf) {
