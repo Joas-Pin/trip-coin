@@ -1,4 +1,4 @@
-export enum LogLevel {
+enum LogLevel {
   DEBUG = "DEBUG",
   INFO = "INFO",
   WARN = "WARN",
@@ -13,30 +13,30 @@ interface LogEntry {
 }
 
 class StructuredLogger {
-  private static formatLog(level: LogLevel, message: string, metadata?: Record<string, unknown>): void {
-    const logEntry: LogEntry = {
+  private log(level: LogLevel, message: string, metadata?: Record<string, unknown>) {
+    const entry: LogEntry = {
       level,
       message,
       timestamp: new Date().toISOString(),
       ...metadata,
     };
-    console.log(JSON.stringify(logEntry));
+    console.log(JSON.stringify(entry));
   }
 
-  debug(message: string, metadata?: Record<string, unknown>): void {
-    this.formatLog(LogLevel.DEBUG, message, metadata);
+  debug(message: string, metadata?: Record<string, unknown>) {
+    this.log(LogLevel.DEBUG, message, metadata);
   }
 
-  info(message: string, metadata?: Record<string, unknown>): void {
-    this.formatLog(LogLevel.INFO, message, metadata);
+  info(message: string, metadata?: Record<string, unknown>) {
+    this.log(LogLevel.INFO, message, metadata);
   }
 
-  warn(message: string, metadata?: Record<string, unknown>): void {
-    this.formatLog(LogLevel.WARN, message, metadata);
+  warn(message: string, metadata?: Record<string, unknown>) {
+    this.log(LogLevel.WARN, message, metadata);
   }
 
-  error(message: string, metadata?: Record<string, unknown>): void {
-    this.formatLog(LogLevel.ERROR, message, metadata);
+  error(message: string, metadata?: Record<string, unknown>) {
+    this.log(LogLevel.ERROR, message, metadata);
   }
 }
 

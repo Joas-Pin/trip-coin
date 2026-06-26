@@ -1,188 +1,84 @@
 import { serve } from "std/http/server.ts";
-import { createClient, SupabaseClient } from "supabase";
-import { scrapePage } from "./scraper/index.ts";
-import { getParser } from "./parsers/index.ts";
-import type { NFCeData } from "./types.ts";
 import { logger } from "./logger.ts";
-import { validateNFCeUrl, validateComprovanteId } from "./utils.ts";
-
-const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-const TIMEOUT_MS = 30000;
-
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  let timeoutId: number | undefined;
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => reject(new Error("Request timeout")), timeoutMs);
-  });
-
-  try {
-    return await Promise.race([promise, timeoutPromise]);
-  } finally {
-    if (timeoutId !== undefined) clearTimeout(timeoutId);
-  }
-}
-
-async function readJsonBody(req: Request): Promise<{ url?: string; comprovanteId?: string }> {
-  try {
-    const text = await req.text();
-    if (!text) return {};
-    return JSON.parse(text);
-  } catch {
-    return {};
-  }
-}
-
-async function updateComprovanteStatus(
-  supabase: SupabaseClient,
-  comprovanteId: string,
-  data: Partial<{
-    valor_total: number;
-    chave_acesso: string;
-    data_emissao: string;
-    emitente: string;
-    cnpj: string;
-    nfce_json: NFCeData;
-    ocr_status: string;
-    error_message: string;
-    updated_at: string;
-  }>
-) {
-  const { error } = await supabase
-    .from("comprovantes")
-    .update({
-      ...data,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", comprovanteId);
-
-  if (error) {
-    logger.error("Failed to update comprovante", { comprovanteId, error });
-    throw error;
-  }
-}
+import { validateUrl, validateUUID } from "./utils.ts";
+import { fetchPage } from "./services/fetch-page.ts";
+import { extractTotal } from "./services/total-extractor.ts";
+import { updateStatus, updateValor, updateErro } from "./services/supabase.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
 };
 
-async function handleScrapeRequest(req: Request): Promise<Response> {
-  // Handle CORS preflight
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
-
+async function handleRequest(req: Request): Promise<Response> {
   const startTime = Date.now();
-  let comprovanteId: string | undefined;
+  let comprovanteId: string | null = null;
 
   try {
-    const body = await readJsonBody(req);
-    const { url } = body;
-    comprovanteId = body.comprovanteId;
+    if (req.method === "OPTIONS") {
+      return new Response("ok", { headers: corsHeaders });
+    }
 
-    logger.info("Received scrape request", {
-      hasUrl: !!url,
-      hasComprovanteId: !!comprovanteId,
-    });
+    const body = await req.json().catch(() => ({}));
+    const { url, comprovanteId: id } = body;
+    comprovanteId = id;
 
-    // Validate input
-    if (!url || !validateNFCeUrl(url)) {
-      logger.warn("Invalid URL", { url });
+    logger.info("Request received", { hasUrl: !!url, hasComprovanteId: !!comprovanteId });
+
+    if (!validateUrl(url)) {
       return new Response(
-        JSON.stringify({ error: "URL inválida ou não reconhecida como NFC-e" }),
+        JSON.stringify({ success: false, message: "URL inválida ou não reconhecida como NFC-e" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    if (!comprovanteId || !validateComprovanteId(comprovanteId)) {
-      logger.warn("Missing or invalid comprovanteId", { comprovanteId });
+    if (!comprovanteId || !validateUUID(comprovanteId)) {
       return new Response(
-        JSON.stringify({ error: "ID do comprovante inválido ou ausente" }),
+        JSON.stringify({ success: false, message: "ID do comprovante inválido ou ausente" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    await updateStatus(comprovanteId, "processando");
 
-    // Update status to processing
-    await updateComprovanteStatus(supabase, comprovanteId, {
-      ocr_status: "processando",
-    });
+    const html = await fetchPage(url);
+    const valorTotal = await extractTotal(html);
 
-    // Scrape the page with timeout
-    logger.info("Starting page scrape", { url, comprovanteId });
-    const html = await withTimeout(scrapePage(url), TIMEOUT_MS);
-    logger.info("Page scraped successfully", {
+    await updateValor(comprovanteId, valorTotal);
+
+    logger.info("Request completed", {
       url,
-      htmlLength: html.length,
-      duration: Date.now() - startTime,
-    });
-
-    // Parse the HTML
-    logger.info("Starting HTML parsing", { url, comprovanteId });
-    const parser = getParser(url);
-    const nfceData: NFCeData = await parser.parse(html);
-    nfceData.urlConsulta = url;
-
-    logger.info("NFC-e data parsed successfully", {
-      chaveAcesso: nfceData.chaveAcesso,
-      valorTotal: nfceData.valorTotal,
-      emitente: nfceData.emitente,
-      duration: Date.now() - startTime,
-    });
-
-    // Update comprovante with parsed data
-    await updateComprovanteStatus(supabase, comprovanteId, {
-      valor_total: nfceData.valorTotal,
-      chave_acesso: nfceData.chaveAcesso,
-      data_emissao: nfceData.dataEmissao,
-      emitente: nfceData.emitente,
-      cnpj: nfceData.cnpj,
-      nfce_json: nfceData,
-      ocr_status: "concluido",
-    });
-
-    logger.info("Scrape completed successfully", {
       comprovanteId,
-      totalDuration: Date.now() - startTime,
+      valorTotal,
+      duration: Date.now() - startTime,
     });
 
     return new Response(
-      JSON.stringify({ success: true, data: nfceData }),
+      JSON.stringify({ success: true, valorTotal }),
       { headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
-    logger.error("Error processing scrape request", {
-      error: errorMessage,
+    const message = error instanceof Error ? error.message : "Erro desconhecido";
+    logger.error("Request failed", {
       comprovanteId,
-      stack: error instanceof Error ? error.stack : undefined,
+      error: message,
       duration: Date.now() - startTime,
     });
 
     if (comprovanteId) {
       try {
-        const supabase = createClient(supabaseUrl, supabaseServiceKey);
-        await updateComprovanteStatus(supabase, comprovanteId, {
-          ocr_status: "pendente",
-          error_message: errorMessage,
-        });
-      } catch (dbError) {
-        logger.error("Failed to update comprovante error status", {
-          comprovanteId,
-          dbError: dbError instanceof Error ? dbError.message : "Unknown DB error",
-        });
+        await updateErro(comprovanteId, message);
+      } catch {
+        // ignore
       }
     }
 
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ success: false, message }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 }
 
-serve(handleScrapeRequest);
+serve(handleRequest);
