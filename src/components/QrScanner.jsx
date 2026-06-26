@@ -5,6 +5,45 @@ import { Button } from './ui/button';
 import { extractChaveAcesso } from '@/api/comprovantes';
 import { toast } from 'sonner';
 
+/**
+ * Valida se o texto do QR code para determinar se é uma NFC-e válida
+ * Aceita: URLs, chaves de acesso e textos relacionados a NFC-e
+ */
+const validateNFCeText = (text) => {
+  if (!text || typeof text !== 'string') {
+    return { valid: false, reason: 'Texto vazio ou inválido' };
+  }
+
+  const trimmed = text.trim();
+  
+  // Verifica se é uma URL válida
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    // Verifica se contém palavras-chave relacionadas a NFC-e
+    const hasNFCeKeywords = ['nfce', 'sefaz', 'nfe', 'chave', 'cupom'].some(keyword => 
+      trimmed.toLowerCase().includes(keyword)
+    );
+    if (hasNFCeKeywords) {
+      return { valid: true, type: 'url', value: trimmed };
+    }
+  }
+
+  // Verifica se é uma chave de acesso (44 dígitos)
+  const chave = extractChaveAcesso(trimmed);
+  if (chave) {
+    return { valid: true, type: 'chave', value: trimmed, chaveAcesso: chave };
+  }
+
+  // Verifica se contém palavras-chave mesmo não sendo URL
+  const hasKeywords = ['nfce', 'sefaz', 'nfe', 'cupom fiscal', 'chave de acesso'].some(keyword => 
+    trimmed.toLowerCase().includes(keyword)
+  );
+  if (hasKeywords) {
+    return { valid: true, type: 'texto', value: trimmed };
+  }
+
+  return { valid: false, reason: 'Não parece ser uma NFC-e válida' };
+};
+
 export default function QrScanner({ onScan, onClose }) {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -13,6 +52,7 @@ export default function QrScanner({ onScan, onClose }) {
   const [cameras, setCameras] = useState([]);
   const [selectedCamera, setSelectedCamera] = useState('');
   const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
+  const [lastScanAttempts, setLastScanAttempts] = useState(0);
   
   const videoRef = useRef(null);
   const codeReaderRef = useRef(null);
@@ -36,10 +76,11 @@ export default function QrScanner({ onScan, onClose }) {
         codeReaderRef.current = null;
       }
     } catch (e) {
-      console.error('Error stopping camera:', e);
+      console.error('[QrScanner] Error stopping camera:', e);
     }
     setIsCameraActive(false);
     setStatus('');
+    setLastScanAttempts(0);
   }, []);
 
   // Handle camera stop
@@ -65,15 +106,17 @@ export default function QrScanner({ onScan, onClose }) {
       } else if (videoDevices.length > 0) {
         setSelectedCamera(videoDevices[0].deviceId);
       }
+      
+      console.log('[QrScanner] Cameras found:', videoDevices.length);
     } catch (err) {
-      console.error('Error listing cameras:', err);
+      console.error('[QrScanner] Error listing cameras:', err);
     }
   };
 
   // Wait for video element to be available
   const waitForVideoRef = () => {
     return new Promise((resolve, reject) => {
-      const maxAttempts = 20;
+      const maxAttempts = 30;
       let attempts = 0;
       
       const check = () => {
@@ -91,10 +134,24 @@ export default function QrScanner({ onScan, onClose }) {
     });
   };
 
+  const createOptimizedReader = () => {
+    return new BrowserQRCodeReader({
+      delayBetweenScanAttempts: 200,
+      tryHarder: true,
+      tryHarderWithoutRotation: false,
+      possibleFormats: ['QR_CODE'],
+    }, {
+      audio: false,
+      video: { facingMode: 'environment' }
+    });
+  };
+
   const handleStartCamera = async (deviceId = undefined) => {
+    console.log('[QrScanner] Starting camera...');
     setError('');
     setStatus('Acessando câmera...');
     setScanning(true);
+    setLastScanAttempts(0);
     
     try {
       // Clean up any existing reader
@@ -108,15 +165,8 @@ export default function QrScanner({ onScan, onClose }) {
       // Wait for video ref to be available
       const videoElement = await waitForVideoRef();
 
-      // Initialize QR code reader with better settings
-      codeReaderRef.current = new BrowserQRCodeReader({
-        delayBetweenScanAttempts: 300,
-        tryHarder: true,
-        tryHarderWithoutRotation: false,
-      }, {
-        audio: false,
-        video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'environment' }
-      });
+      // Initialize QR code reader with optimized settings
+      codeReaderRef.current = createOptimizedReader();
 
       // Request permission and start decoding
       await codeReaderRef.current.decodeFromVideoDevice(
@@ -126,11 +176,12 @@ export default function QrScanner({ onScan, onClose }) {
           if (!mountedRef.current) return;
           
           if (result) {
+            console.log('[QrScanner] QR code detected:', result.text.substring(0, 100));
             handleResult(result.text);
           }
           
           if (err && !(err instanceof NotFoundException)) {
-            console.error('QR Scan Error:', err);
+            console.error('[QrScanner] QR Scan Error:', err);
           }
         }
       );
@@ -141,7 +192,7 @@ export default function QrScanner({ onScan, onClose }) {
       await listCameras();
       
     } catch (err) {
-      console.error('Camera Error:', err);
+      console.error('[QrScanner] Camera Error:', err);
       setIsCameraActive(false);
       
       // Handle specific camera errors with user-friendly messages
@@ -176,6 +227,7 @@ export default function QrScanner({ onScan, onClose }) {
 
   // Fallback method with simpler constraints
   const handleStartCameraFallback = async () => {
+    console.log('[QrScanner] Using fallback camera method');
     try {
       if (codeReaderRef.current) {
         codeReaderRef.current.reset();
@@ -188,7 +240,7 @@ export default function QrScanner({ onScan, onClose }) {
       const videoElement = await waitForVideoRef();
 
       codeReaderRef.current = new BrowserQRCodeReader(
-        { delayBetweenScanAttempts: 500, tryHarder: true },
+        { delayBetweenScanAttempts: 400, tryHarder: true },
         { audio: false, video: true }
       );
 
@@ -198,14 +250,14 @@ export default function QrScanner({ onScan, onClose }) {
         (result, err) => {
           if (!mountedRef.current) return;
           if (result) handleResult(result.text);
-          if (err && !(err instanceof NotFoundException)) console.error('QR Scan Error:', err);
+          if (err && !(err instanceof NotFoundException)) console.error('[QrScanner] QR Scan Error:', err);
         }
       );
 
       setStatus('Aponte o QR Code da NFC-e para a câmera');
       await listCameras();
     } catch (fallbackErr) {
-      console.error('Fallback camera error:', fallbackErr);
+      console.error('[QrScanner] Fallback camera error:', fallbackErr);
       setIsCameraActive(false);
       setError('Não foi possível acessar a câmera. Tente usar a opção de upload de imagem.');
     } finally {
@@ -223,26 +275,91 @@ export default function QrScanner({ onScan, onClose }) {
     const nextIndex = (currentIndex + 1) % cameras.length;
     const nextCameraId = cameras[nextIndex].deviceId;
     
+    console.log('[QrScanner] Switching to camera:', nextIndex);
     setSelectedCamera(nextCameraId);
     stopCamera();
-    // Small delay to ensure cleanup
     setTimeout(() => handleStartCamera(nextCameraId), 300);
+  };
+
+  // Try to decode image with multiple rotations for better results
+  const tryDecodeWithRotations = async (reader, imageUrl) => {
+    const img = document.createElement('img');
+    img.crossOrigin = 'anonymous';
+    img.src = imageUrl;
+    
+    await new Promise((resolve) => {
+      img.onload = resolve;
+      img.onerror = resolve;
+    });
+
+    // Create a canvas to manipulate the image
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    
+    // Try original first
+    try {
+      const result = await reader.decodeFromImageElement(img);
+      console.log('[QrScanner] Decoded without rotation');
+      return result;
+    } catch (e) {
+      console.log('[QrScanner] Failed to decode, trying rotations...');
+    }
+
+    // Try rotations: 90, 180, 270 degrees
+    const rotations = [90, 180, 270];
+    
+    for (const degrees of rotations) {
+      try {
+        // Rotate the image
+        const radians = degrees * Math.PI / 180;
+        canvas.width = degrees === 90 || degrees === 270 ? img.height : img.width;
+        canvas.height = degrees === 90 || degrees === 270 ? img.width : img.height;
+        ctx.save();
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate(radians);
+        ctx.drawImage(img, -img.width / 2, -img.height / 2);
+        ctx.restore();
+        
+        const rotatedUrl = canvas.toDataURL();
+        const rotatedImg = document.createElement('img');
+        rotatedImg.src = rotatedUrl;
+        await new Promise(resolve => { rotatedImg.onload = resolve; });
+        
+        const result = await reader.decodeFromImageElement(rotatedImg);
+        console.log(`[QrScanner] Decoded with ${degrees}° rotation`);
+        return result;
+      } catch (err) {
+        console.log(`[QrScanner] Failed with ${degrees}° rotation`);
+      }
+    }
+
+    throw new NotFoundException();
   };
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
+    console.log('[QrScanner] Processing uploaded file:', file.name, file.size);
     setError('');
     setStatus('Analisando imagem...');
     setScanning(true);
     
     try {
-      const reader = new BrowserQRCodeReader();
-      const result = await reader.decodeFromImageElement(URL.createObjectURL(file));
-      handleResult(result.text);
+      const reader = createOptimizedReader();
+      const imageUrl = URL.createObjectURL(file);
+      
+      try {
+        const result = await tryDecodeWithRotations(reader, imageUrl);
+        console.log('[QrScanner] File upload result:', result.text.substring(0, 100));
+        handleResult(result.text);
+      } finally {
+        URL.revokeObjectURL(imageUrl);
+      }
     } catch (err) {
-      console.error('File Upload QR Error:', err);
+      console.error('[QrScanner] File Upload QR Error:', err);
       if (err instanceof NotFoundException) {
         setError('Não foi possível encontrar um QR Code na imagem. Tente outra foto com melhor iluminação e foco.');
       } else {
@@ -260,13 +377,24 @@ export default function QrScanner({ onScan, onClose }) {
   };
 
   const handleResult = (text) => {
-    if (text && (text.startsWith('http') || text.includes('nfce') || text.includes('sefaz'))) {
+    console.log('[QrScanner] Processing result:', text.substring(0, 100));
+    
+    const validation = validateNFCeText(text);
+    
+    if (validation.valid) {
+      console.log('[QrScanner] Valid NFC-e detected:', validation.type);
       setStatus('NFC-e detectada! Processando...');
       toast.success('NFC-e detectada com sucesso!');
       stopCamera();
-      onScan(text);
+      onScan(validation.value);
     } else {
-      toast.error('QR Code não parece ser uma NFC-e válida');
+      console.log('[QrScanner] Invalid QR code rejected:', validation.reason);
+      toast.error(validation.reason || 'QR Code não parece ser uma NFC-e válida');
+      setLastScanAttempts(prev => prev + 1);
+      
+      if (lastScanAttempts >= 2) {
+        setStatus('Tente aproximar mais ou ajustar a iluminação');
+      }
     }
   };
 
