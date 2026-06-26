@@ -125,15 +125,20 @@ export const comprovantes = {
     // If we have a QR code URL, trigger the scrape (don't await so it's non-blocking)
     if (qrCodeUrl && comprovante) {
       try {
-        const { error } = await supabase.functions.invoke('scrape-nfce', {
-          body: {
+        const res = await supabase.functions.invoke('scrape-nfce', {
+          body: JSON.stringify({
             url: qrCodeUrl,
             comprovanteId: comprovante.id,
+          }),
+          headers: {
+            'Content-Type': 'application/json',
           },
         });
 
-        if (error) {
-          console.error('Error triggering NF-e scrape:', error);
+        if (res.error) {
+          console.error('Error triggering NF-e scrape:', res.error);
+        } else {
+          console.log('NF-e scrape triggered:', res.data);
         }
       } catch (error) {
         console.error('Error calling edge function:', error);
