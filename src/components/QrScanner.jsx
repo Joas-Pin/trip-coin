@@ -58,6 +58,7 @@ export default function QrScanner({ onScan, onClose }) {
   const codeReaderRef = useRef(null);
   const fileInputRef = useRef(null);
   const mountedRef = useRef(true);
+  const lastLoggedErrorRef = useRef(null);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -136,7 +137,7 @@ export default function QrScanner({ onScan, onClose }) {
 
   const createOptimizedReader = () => {
     return new BrowserQRCodeReader({
-      delayBetweenScanAttempts: 200,
+      delayBetweenScanAttempts: 500, // Aumenta o intervalo para reduzir carga
       tryHarder: true,
       tryHarderWithoutRotation: false,
       possibleFormats: ['QR_CODE'],
@@ -181,7 +182,12 @@ export default function QrScanner({ onScan, onClose }) {
           }
           
           if (err && !(err instanceof NotFoundException)) {
-            console.error('[QrScanner] QR Scan Error:', err);
+            // Evita poluir o console com erros repetidos
+            const errMessage = err?.message || String(err);
+            if (errMessage !== lastLoggedErrorRef.current) {
+              console.error('[QrScanner] QR Scan Error:', err);
+              lastLoggedErrorRef.current = errMessage;
+            }
           }
         }
       );
@@ -250,7 +256,13 @@ export default function QrScanner({ onScan, onClose }) {
         (result, err) => {
           if (!mountedRef.current) return;
           if (result) handleResult(result.text);
-          if (err && !(err instanceof NotFoundException)) console.error('[QrScanner] QR Scan Error:', err);
+          if (err && !(err instanceof NotFoundException)) {
+            const errMessage = err?.message || String(err);
+            if (errMessage !== lastLoggedErrorRef.current) {
+              console.error('[QrScanner] QR Scan Error:', err);
+              lastLoggedErrorRef.current = errMessage;
+            }
+          }
         }
       );
 
