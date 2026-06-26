@@ -62,7 +62,18 @@ async function updateComprovanteStatus(
   }
 }
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
 async function handleScrapeRequest(req: Request): Promise<Response> {
+  // Handle CORS preflight
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   const startTime = Date.now();
   let comprovanteId: string | undefined;
 
@@ -81,7 +92,7 @@ async function handleScrapeRequest(req: Request): Promise<Response> {
       logger.warn("Invalid URL", { url });
       return new Response(
         JSON.stringify({ error: "URL inválida ou não reconhecida como NFC-e" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
@@ -89,7 +100,7 @@ async function handleScrapeRequest(req: Request): Promise<Response> {
       logger.warn("Missing or invalid comprovanteId", { comprovanteId });
       return new Response(
         JSON.stringify({ error: "ID do comprovante inválido ou ausente" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
@@ -140,7 +151,7 @@ async function handleScrapeRequest(req: Request): Promise<Response> {
 
     return new Response(
       JSON.stringify({ success: true, data: nfceData }),
-      { headers: { "Content-Type": "application/json" } }
+      { headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
 
   } catch (error) {
@@ -169,7 +180,7 @@ async function handleScrapeRequest(req: Request): Promise<Response> {
 
     return new Response(
       JSON.stringify({ error: errorMessage }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 }
