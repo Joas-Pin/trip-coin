@@ -1,6 +1,10 @@
 {
   "imports": {
     "std/": "https://deno.land/std@0.192.0/",
-    "supabase": "https://esm.sh/@supabase/supabase-js@2"
+    "supabase": "https://esm.sh/@supabase/supabase-js@2",
+    "cheerio": "https://esm.sh/cheerio@1.0.0-rc.12"
+  },
+  "compilerOptions": {
+    "lib": ["deno.ns", "dom"]
   }
 }

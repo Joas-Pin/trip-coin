@@ -260,13 +260,11 @@ export default function QrScanner({ onScan, onClose }) {
   };
 
   const handleResult = (text) => {
-    const chave = extractChaveAcesso(text);
-    
-    if (chave) {
+    if (text && (text.startsWith('http') || text.includes('nfce') || text.includes('sefaz'))) {
       setStatus('NFC-e detectada! Processando...');
       toast.success('NFC-e detectada com sucesso!');
       stopCamera();
-      onScan(chave, text);
+      onScan(text);
     } else {
       toast.error('QR Code não parece ser uma NFC-e válida');
     }

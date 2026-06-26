@@ -98,15 +98,15 @@ export const comprovantes = {
   async createWithOCR(data, fileContent = null) {
     let valorTotal = null;
     let ocrStatus = 'pendente';
+    let qrCodeUrl = data.qr_code_url || null;
+    let chave = null;
 
-    // Check if we have a QR code URL or chave de acesso first
-    const chave = extractChaveAcesso(data.qr_code_url || fileContent || '');
-    
-    if (chave) {
-      // Mark as processing first
+    // If we have a QR code URL, extract chave and mark as processing
+    if (qrCodeUrl) {
+      chave = extractChaveAcesso(qrCodeUrl);
       ocrStatus = 'processando';
     } else if (fileContent) {
-      // If no chave, try regular OCR on text content
+      // If no QR URL but we have file content, try OCR
       const extractedValue = extractValueFromText(fileContent);
       if (extractedValue) {
         valorTotal = extractedValue;
@@ -122,13 +122,12 @@ export const comprovantes = {
       ocr_status: ocrStatus,
     });
 
-    // If we have a chave, trigger the scrape (don't await so it's non-blocking)
-    if (chave && comprovante) {
-      // Call Supabase Edge Function
+    // If we have a QR code URL, trigger the scrape (don't await so it's non-blocking)
+    if (qrCodeUrl && comprovante) {
       try {
         const { error } = await supabase.functions.invoke('scrape-nfce', {
           body: {
-            chaveAcesso: chave,
+            url: qrCodeUrl,
             comprovanteId: comprovante.id,
           },
         });

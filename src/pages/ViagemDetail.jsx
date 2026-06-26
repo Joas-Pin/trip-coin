@@ -226,11 +226,12 @@ export default function ViagemDetail() {
     setProcessingQr(true);
     
     try {
-      // Check if we can extract a valid chave de acesso
+      // Check if it's a valid URL or has a chave de acesso
+      const isUrl = urlOrChave.startsWith('http');
       const chave = extractChaveAcesso(urlOrChave);
       
-      if (!chave) {
-        toast.error('URL ou chave de acesso inválida. Deve conter 44 dígitos.');
+      if (!isUrl && !chave) {
+        toast.error('URL ou chave de acesso inválida.');
         return;
       }
       
@@ -256,9 +257,9 @@ export default function ViagemDetail() {
     }
   };
 
-  const handleQrScan = (chave, rawText) => {
-    setQrCodeUrl(rawText);
-    handleSubmitQrCode(rawText);
+  const handleQrScan = (url) => {
+    setQrCodeUrl(url);
+    handleSubmitQrCode(url);
   };
 
   const handleOpenComprovante = async (comprovante, isDownload = false) => {
